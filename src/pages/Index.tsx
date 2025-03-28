@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -117,7 +118,7 @@ const Index = () => {
         ...data,
         dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
         dataEntrega: data.dataEntrega ? format(data.dataEntrega, "dd/MM/yy") : "",
-        formType: 'cliente',
+        formType: 'cliente', // Identificador para saber que é um formulário de cliente
       };
       
       const result = await submitToGoogleSheets(formattedData, webhookUrl);
