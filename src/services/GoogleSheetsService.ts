@@ -12,41 +12,19 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    // Obter a planilha ativa
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName("recebendoDadosDasVendas") || ss.insertSheet("recebendoDadosDasVendas");
+    // Obter os dados enviados
+    const data = JSON.parse(e.postData.contents);
     
-    // Se a planilha foi recém-criada, adicione cabeçalhos
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow([
-        "Timestamp",
-        "Nome",
-        "CPF",
-        "Telefone",
-        "Gênero",
-        "Linha",
-        "Tipo",
-        "Cor", 
-        "Tamanho",
-        "Valor",
-        "Forma de Pagamento",
-        "Localização",
-        "Frete",
-        "Data de Pagamento",
-        "Data de Entrega",
-        "Valor Total",
-        "Observação"
-      ]);
-      
-      // Formatar cabeçalhos
-      const headerRange = sheet.getRange(1, 1, 1, 17);
-      headerRange.setFontWeight("bold");
-      headerRange.setBackground("#f3f3f3");
-      sheet.setFrozenRows(1);
+    // Determinar qual planilha usar com base no tipo de formulário
+    let sheetName = "recebendoDadosDasVendas"; // Padrão para formulário de clientes
+    
+    if (data.formType === 'lead') {
+      sheetName = "Leads"; // Planilha para leads
     }
     
-    // Obter dados do POST
-    const data = JSON.parse(e.postData.contents);
+    // Obter a planilha ativa
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
     
     // Sanitizar dados para evitar injeção de fórmulas
     const sanitize = (value) => {
@@ -54,29 +32,98 @@ function doPost(e) {
       return String(value).replace(/^[=+\-@]/, "'$&");
     };
     
-    // Adicionar uma nova linha com os dados recebidos
-    sheet.appendRow([
-      new Date(), // Timestamp atual
-      sanitize(data.nome),
-      sanitize(data.cpf || ""),
-      sanitize(data.telefone),
-      sanitize(data.genero),
-      sanitize(data.linha),
-      sanitize(data.tipo),
-      sanitize(data.cor),
-      sanitize(data.tamanho),
-      sanitize(data.valor),
-      sanitize(data.formaPagamento),
-      sanitize(data.localizacao || ""),
-      sanitize(data.frete),
-      sanitize(data.dataPagamento),
-      sanitize(data.dataEntrega),
-      sanitize(data.valorTotal),
-      sanitize(data.observacao || "")
-    ]);
-    
-    // Ajustar largura das colunas automaticamente
-    sheet.autoResizeColumns(1, 17);
+    // Adicionar cabeçalhos e dados com base no tipo de formulário
+    if (data.formType === 'lead') {
+      // Se a planilha de leads foi recém-criada, adicione cabeçalhos
+      if (sheet.getLastRow() === 0) {
+        sheet.appendRow([
+          "Timestamp",
+          "Nome",
+          "Telefone",
+          "Instagram",
+          "Interesse",
+          "Status do Lead",
+          "Data de Lembrete",
+          "Motivo do Lembrete",
+          "Observações"
+        ]);
+        
+        // Formatar cabeçalhos
+        const headerRange = sheet.getRange(1, 1, 1, 9);
+        headerRange.setFontWeight("bold");
+        headerRange.setBackground("#f3f3f3");
+        sheet.setFrozenRows(1);
+      }
+      
+      // Adicionar os dados do lead
+      sheet.appendRow([
+        new Date(), // Timestamp atual
+        sanitize(data.nome),
+        sanitize(data.telefone),
+        sanitize(data.instagram || ""),
+        sanitize(data.interesse),
+        sanitize(data.statusLead),
+        sanitize(data.dataLembrete),
+        sanitize(data.motivoLembrete),
+        sanitize(data.observacoes || "")
+      ]);
+      
+      // Ajustar largura das colunas automaticamente
+      sheet.autoResizeColumns(1, 9);
+    } else {
+      // Se a planilha de clientes foi recém-criada, adicione cabeçalhos
+      if (sheet.getLastRow() === 0) {
+        sheet.appendRow([
+          "Timestamp",
+          "Nome",
+          "CPF",
+          "Telefone",
+          "Gênero",
+          "Linha",
+          "Tipo",
+          "Cor", 
+          "Tamanho",
+          "Valor",
+          "Forma de Pagamento",
+          "Localização",
+          "Frete",
+          "Data de Pagamento",
+          "Data de Entrega",
+          "Valor Total",
+          "Observação"
+        ]);
+        
+        // Formatar cabeçalhos
+        const headerRange = sheet.getRange(1, 1, 1, 17);
+        headerRange.setFontWeight("bold");
+        headerRange.setBackground("#f3f3f3");
+        sheet.setFrozenRows(1);
+      }
+      
+      // Adicionar os dados do cliente
+      sheet.appendRow([
+        new Date(), // Timestamp atual
+        sanitize(data.nome),
+        sanitize(data.cpf || ""),
+        sanitize(data.telefone),
+        sanitize(data.genero),
+        sanitize(data.linha),
+        sanitize(data.tipo),
+        sanitize(data.cor),
+        sanitize(data.tamanho),
+        sanitize(data.valor),
+        sanitize(data.formaPagamento),
+        sanitize(data.localizacao || ""),
+        sanitize(data.frete),
+        sanitize(data.dataPagamento),
+        sanitize(data.dataEntrega),
+        sanitize(data.valorTotal),
+        sanitize(data.observacao || "")
+      ]);
+      
+      // Ajustar largura das colunas automaticamente
+      sheet.autoResizeColumns(1, 17);
+    }
     
     // Retornar resposta de sucesso
     return ContentService.createTextOutput(JSON.stringify({
@@ -103,13 +150,6 @@ function doPost(e) {
 //    e. Clique em "Implantar" e autorize o aplicativo
 //    f. Copie a URL do aplicativo da Web - esta URL deve ser inserida no botão 
 //       de configuração (ícone de engrenagem) no canto superior direito do formulário
-
-// IMPORTANTE: Segurança
-// 1. Nunca compartilhe a URL do webhook no código do repositório GitHub
-// 2. Use o botão de configuração no aplicativo para inserir a URL do webhook
-// 3. A URL será armazenada apenas no localStorage do navegador do usuário
-// 4. Sempre use HTTPS para comunicação segura
-// 5. Considere implementar alguma forma de autenticação adicional se necessário
 
 /**
  * Envia dados do formulário para o webhook do Google Sheets de forma segura
