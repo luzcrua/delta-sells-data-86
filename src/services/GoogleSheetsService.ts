@@ -1,3 +1,4 @@
+
 // This file provides helpers for Google Sheets integration
 import { GOOGLE_SHEETS_URL } from "../env";
 
@@ -148,14 +149,7 @@ function doPost(e) {
 //    c. Configure "Executar como:" para "Eu" (sua conta do Google)
 //    d. Configure "Quem tem acesso:" para "Qualquer pessoa"
 //    e. Clique em "Implantar" e autorize o aplicativo
-//    f. Copie a URL do aplicativo da Web e configure na página de Configurações
-
-// Storage key para o localStorage
-const WEBHOOK_STORAGE_KEY = "google_sheets_webhook_url";
-
-// URL de fallback para desenvolvimento (não será usada em produção)
-// Usuários precisarão configurar sua própria URL nas configurações
-const DEFAULT_WEBHOOK_URL = "";
+//    f. Copie a URL do aplicativo da Web e configure no arquivo env.ts
 
 // Número do WhatsApp para fallback (com código do país)
 const WHATSAPP_FALLBACK_NUMBER = "558293460460";
@@ -248,7 +242,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
-        message: "URL do Apps Script não configurada no arquivo env.ts. Configure o arquivo ou use o WhatsApp como alternativa." 
+        message: "A URL do Apps Script não está configurada no arquivo env.ts. Configure o arquivo adicionando a URL ou use o WhatsApp como alternativa." 
       };
     }
     
@@ -259,7 +253,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
-        message: "URL do Apps Script inválida no arquivo env.ts. Configure corretamente ou use o WhatsApp como alternativa." 
+        message: "A URL do Apps Script no arquivo env.ts parece inválida. Configure corretamente ou use o WhatsApp como alternativa." 
       };
     }
     
@@ -307,22 +301,6 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
       message: `Erro ao enviar para a planilha: ${error instanceof Error ? error.message : "Erro desconhecido"}. Dados enviados para WhatsApp como alternativa.` 
     };
   }
-}
-
-/**
- * Armazena de forma segura a URL do webhook no localStorage
- */
-export function saveWebhookUrl(url: string): void {
-  if (url && url.trim() !== "") {
-    localStorage.setItem(WEBHOOK_STORAGE_KEY, url);
-  }
-}
-
-/**
- * Recupera a URL do webhook do localStorage
- */
-export function getWebhookUrl(): string {
-  return localStorage.getItem(WEBHOOK_STORAGE_KEY) || DEFAULT_WEBHOOK_URL;
 }
 
 /**

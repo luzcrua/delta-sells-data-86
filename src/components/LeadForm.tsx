@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,7 +16,6 @@ import { formatPhone, formatDate } from "@/lib/formatters";
 import { leadFormSchema, LeadFormValues } from "@/lib/leadValidators";
 import { submitToGoogleSheets, isWebhookConfigured } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
-import { Link } from "react-router-dom";
 
 const LeadForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);

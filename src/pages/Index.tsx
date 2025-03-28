@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import LeadForm from "@/components/LeadForm";
 
 const Index = () => {
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -32,6 +33,7 @@ const Index = () => {
     setIsConfigured(isWebhookConfigured());
   }, []);
   
+
   const {
     register,
     handleSubmit,
@@ -92,6 +94,7 @@ const Index = () => {
   };
 
   const onSubmit = async (data: FormValues) => {
+    
     console.log("Form submission triggered with data:", data);
     setIsSubmitting(true);
     setSubmitError(null);
@@ -149,12 +152,7 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-delta-50 to-delta-100 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <header className="text-center mb-8 relative">
-          <div className="absolute right-0 top-0">
-            <Link to="/settings" className="inline-flex items-center text-delta-600 hover:text-delta-800">
-              <SettingsIcon className="h-5 w-5 mr-1" />
-              <span className="text-sm">Configurações</span>
-            </Link>
-          </div>
+          
           <h1 className="text-3xl md:text-4xl font-bold text-delta-950 mb-2">
             DELTA SELLS CLIENTS
           </h1>
@@ -165,7 +163,7 @@ const Index = () => {
           {!isConfigured && (
             <div className="mt-4 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-md">
               <p className="text-sm">
-                ⚠️ A URL do App Script não está configurada. 
+                ⚠️ A URL do App Script não está configurada no arquivo env.ts. 
                 <Link to="/settings" className="ml-1 font-medium underline">
                   Configure agora
                 </Link> para habilitar o envio direto para o Google Sheets.
@@ -190,9 +188,12 @@ const Index = () => {
         </div>
 
         <div className={`tab-panel ${activeTab === "cliente" ? "active" : ""}`}>
+          
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+                
+                
                 <div className="form-section space-y-4">
                   <h2 className="text-2xl font-semibold text-delta-800 mb-4">
                     Informações Pessoais
