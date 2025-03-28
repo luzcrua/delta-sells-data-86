@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -63,6 +62,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ webhookUrl }) => {
   };
 
   const onSubmit = async (data: LeadFormValues) => {
+    console.log("Lead form submission triggered with data:", data);
     setIsSubmitting(true);
     
     try {
@@ -76,7 +76,9 @@ const LeadForm: React.FC<LeadFormProps> = ({ webhookUrl }) => {
         formType: 'lead', // Identificador para saber que é um formulário de lead
       };
       
+      console.log("Sending formatted lead data to Google Sheets:", formattedData);
       const result = await submitToGoogleSheets(formattedData, webhookUrl);
+      console.log("Response from Google Sheets for lead form:", result);
       
       if (result.success) {
         toast({
@@ -96,6 +98,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ webhookUrl }) => {
         });
       }
     } catch (error) {
+      console.error("Error in lead form submission:", error);
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Ocorreu um erro ao enviar os dados. Tente novamente.",

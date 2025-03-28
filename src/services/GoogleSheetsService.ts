@@ -156,6 +156,8 @@ function doPost(e) {
  */
 export async function submitToGoogleSheets(data: any, webhookUrl: string): Promise<{ success: boolean; message: string }> {
   try {
+    console.log("Starting submission to Google Sheets...");
+    
     if (!webhookUrl) {
       throw new Error("URL do webhook do Google Sheets não configurada");
     }
@@ -164,6 +166,8 @@ export async function submitToGoogleSheets(data: any, webhookUrl: string): Promi
     if (!webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
       throw new Error("URL do webhook inválida. Deve ser uma URL segura do Google Apps Script");
     }
+    
+    console.log("Sending data to webhook:", webhookUrl);
     
     // Prepara os dados para envio
     const response = await fetch(webhookUrl, {
@@ -175,6 +179,8 @@ export async function submitToGoogleSheets(data: any, webhookUrl: string): Promi
       mode: "cors", // Habilita CORS
     });
     
+    console.log("Response status:", response.status);
+    
     if (!response.ok) {
       throw new Error(`Erro HTTP: ${response.status} - ${response.statusText}`);
     }
@@ -182,7 +188,9 @@ export async function submitToGoogleSheets(data: any, webhookUrl: string): Promi
     let result;
     try {
       result = await response.json();
+      console.log("Parsed response:", result);
     } catch (error) {
+      console.error("Error parsing response:", error);
       throw new Error("Resposta do servidor não está no formato JSON esperado");
     }
     

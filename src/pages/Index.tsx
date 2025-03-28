@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -107,6 +106,7 @@ const Index = () => {
   };
 
   const onSubmit = async (data: FormValues) => {
+    console.log("Form submission triggered with data:", data);
     setIsSubmitting(true);
     
     try {
@@ -121,7 +121,9 @@ const Index = () => {
         formType: 'cliente', // Identificador para saber que é um formulário de cliente
       };
       
+      console.log("Sending formatted data to Google Sheets:", formattedData);
       const result = await submitToGoogleSheets(formattedData, webhookUrl);
+      console.log("Response from Google Sheets:", result);
       
       if (result.success) {
         toast({
@@ -141,6 +143,7 @@ const Index = () => {
         });
       }
     } catch (error) {
+      console.error("Error in form submission:", error);
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Ocorreu um erro ao enviar os dados. Tente novamente.",
