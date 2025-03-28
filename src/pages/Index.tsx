@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -395,7 +394,7 @@ const Index = () => {
                     error={errors.valorTotal?.message}
                     className="font-semibold"
                     required
-                    disabled={true}
+                    readOnly={true}
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -17,6 +17,8 @@ interface FormInputProps {
   className?: string;
   type?: string;
   maxLength?: number;
+  disabled?: boolean;
+  readOnly?: boolean;
 }
 
 const FormInput = ({
@@ -32,6 +34,8 @@ const FormInput = ({
   className,
   type = "text",
   maxLength,
+  disabled,
+  readOnly,
 }: FormInputProps) => {
   const [focused, setFocused] = useState(false);
   const [formattedValue, setFormattedValue] = useState(value);
@@ -93,6 +97,8 @@ const FormInput = ({
           error ? "border-destructive" : ""
         )}
         maxLength={maxLength}
+        disabled={disabled}
+        readOnly={readOnly}
       />
       {error && <p className="text-destructive text-sm">{error}</p>}
     </div>
