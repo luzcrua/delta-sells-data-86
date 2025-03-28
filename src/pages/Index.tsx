@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +5,8 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader, Check, AlertCircle } from "lucide-react";
+import { Loader, Check, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import { Link } from "react-router-dom";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
@@ -14,7 +14,7 @@ import FormTextarea from "@/components/FormTextarea";
 import FormDatePicker from "@/components/FormDatePicker";
 import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
 import { formSchema, type FormValues } from "@/lib/validators";
-import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
+import { submitToGoogleSheets, isWebhookConfigured } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
 import LeadForm from "@/components/LeadForm";
 
@@ -25,6 +25,12 @@ const Index = () => {
   const [valorNumerico, setValorNumerico] = useState(0);
   const [freteNumerico, setFreteNumerico] = useState(15);
   const [activeTab, setActiveTab] = useState("cliente");
+  const [isConfigured, setIsConfigured] = useState(false);
+  
+  useEffect(() => {
+    // Verificar se a URL do webhook está configurada
+    setIsConfigured(isWebhookConfigured());
+  }, []);
   
   const {
     register,
@@ -143,12 +149,29 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-delta-50 to-delta-100 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <header className="text-center mb-8 relative">
+          <div className="absolute right-0 top-0">
+            <Link to="/settings" className="inline-flex items-center text-delta-600 hover:text-delta-800">
+              <SettingsIcon className="h-5 w-5 mr-1" />
+              <span className="text-sm">Configurações</span>
+            </Link>
+          </div>
           <h1 className="text-3xl md:text-4xl font-bold text-delta-950 mb-2">
             DELTA SELLS CLIENTS
           </h1>
           <p className="text-delta-700 text-lg">
             Cadastro de clientes e registro de vendas
           </p>
+          
+          {!isConfigured && (
+            <div className="mt-4 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-md">
+              <p className="text-sm">
+                ⚠️ A URL do App Script não está configurada. 
+                <Link to="/settings" className="ml-1 font-medium underline">
+                  Configure agora
+                </Link> para habilitar o envio direto para o Google Sheets.
+              </p>
+            </div>
+          )}
         </header>
 
         <div className="flex justify-center mb-6 border-b border-delta-200">

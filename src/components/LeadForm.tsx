@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Loader, Check, AlertCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
@@ -14,13 +15,19 @@ import FormTextarea from "@/components/FormTextarea";
 import FormDatePicker from "@/components/FormDatePicker";
 import { formatPhone, formatDate } from "@/lib/formatters";
 import { leadFormSchema, LeadFormValues } from "@/lib/leadValidators";
-import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
+import { submitToGoogleSheets, isWebhookConfigured } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
 
 const LeadForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isConfigured, setIsConfigured] = useState(false);
+  
+  useEffect(() => {
+    // Verificar se a URL do webhook está configurada
+    setIsConfigured(isWebhookConfigured());
+  }, []);
   
   const {
     register,
@@ -114,6 +121,17 @@ const LeadForm: React.FC = () => {
   return (
     <Card className="shadow-lg">
       <CardContent className="p-6">
+        {!isConfigured && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-md">
+            <p className="text-sm">
+              ⚠️ A URL do App Script não está configurada. 
+              <Link to="/settings" className="ml-1 font-medium underline">
+                Configure agora
+              </Link> para habilitar o envio direto para o Google Sheets.
+            </p>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           <div className="form-section space-y-4">
             <h2 className="text-2xl font-semibold text-delta-800 mb-4">

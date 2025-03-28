@@ -148,10 +148,14 @@ function doPost(e) {
 //    c. Configure "Executar como:" para "Eu" (sua conta do Google)
 //    d. Configure "Quem tem acesso:" para "Qualquer pessoa"
 //    e. Clique em "Implantar" e autorize o aplicativo
-//    f. Copie a URL do aplicativo da Web e substitua abaixo na const WEBHOOKURL
+//    f. Copie a URL do aplicativo da Web e configure na página de Configurações
 
-// Coloque aqui a URL do seu webhook do Google Apps Script
-const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzn0oGRz1xD2di7Q6DgW047sW8Cr49LUApET2w9yfUjCT9DsHSh2fOFffyRRuxRWTiPJg/exec";
+// Storage key para o localStorage
+const WEBHOOK_STORAGE_KEY = "google_sheets_webhook_url";
+
+// URL de fallback para desenvolvimento (não será usada em produção)
+// Usuários precisarão configurar sua própria URL nas configurações
+const DEFAULT_WEBHOOK_URL = "";
 
 // Número do WhatsApp para fallback (com código do país)
 const WHATSAPP_FALLBACK_NUMBER = "558293460460";
@@ -231,35 +235,35 @@ export function sendToWhatsAppFallback(data: any): void {
  * Envia dados do formulário para o webhook do Google Sheets de forma segura
  * Com fallback para WhatsApp em caso de falha
  */
-export async function submitToGoogleSheets(data: any, webhookUrlParam?: string): Promise<{ success: boolean; message: string }> {
+export async function submitToGoogleSheets(data: any): Promise<{ success: boolean; message: string }> {
   try {
     console.log("Starting submission to Google Sheets...");
     
-    // Usa o URL do parâmetro se fornecido, caso contrário usa o URL fixo
-    const webhookUrl = webhookUrlParam || WEBHOOK_URL;
+    // Obter a URL do Apps Script do localStorage
+    const webhookUrl = getWebhookUrl();
     
-    if (!webhookUrl || webhookUrl === "https://script.google.com/macros/s/AKfycbzn0oGRz1xD2di7Q6DgW047sW8Cr49LUApET2w9yfUjCT9DsHSh2fOFffyRRuxRWTiPJg/exec") {
-      console.warn("URL do webhook não configurada ou usando valor padrão");
+    if (!webhookUrl) {
+      console.warn("URL do Apps Script não configurada");
       console.log("Ativando fallback para WhatsApp");
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
-        message: "URL do webhook não configurada. Dados enviados para WhatsApp como alternativa." 
+        message: "URL do Apps Script não configurada. Configure em Configurações ou use o WhatsApp como alternativa." 
       };
     }
     
     // Verifica se a URL parece válida (começa com https:// e contém script.google.com)
     if (!webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
-      console.error("URL do webhook inválida");
+      console.error("URL do Apps Script inválida");
       console.log("Ativando fallback para WhatsApp");
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
-        message: "URL do webhook inválida. Dados enviados para WhatsApp como alternativa." 
+        message: "URL do Apps Script inválida. Configure corretamente em Configurações ou use o WhatsApp como alternativa." 
       };
     }
     
-    console.log("Sending data to webhook:", webhookUrl);
+    console.log("Sending data to Apps Script:", webhookUrl);
     
     // Prepara os dados para envio
     const response = await fetch(webhookUrl, {
@@ -310,7 +314,7 @@ export async function submitToGoogleSheets(data: any, webhookUrlParam?: string):
  */
 export function saveWebhookUrl(url: string): void {
   if (url && url.trim() !== "") {
-    localStorage.setItem("google_sheets_webhook_url", url);
+    localStorage.setItem(WEBHOOK_STORAGE_KEY, url);
   }
 }
 
@@ -318,7 +322,7 @@ export function saveWebhookUrl(url: string): void {
  * Recupera a URL do webhook do localStorage
  */
 export function getWebhookUrl(): string {
-  return localStorage.getItem("google_sheets_webhook_url") || WEBHOOK_URL;
+  return localStorage.getItem(WEBHOOK_STORAGE_KEY) || DEFAULT_WEBHOOK_URL;
 }
 
 /**
@@ -326,5 +330,5 @@ export function getWebhookUrl(): string {
  */
 export function isWebhookConfigured(): boolean {
   const url = getWebhookUrl();
-  return url !== null && url !== "";
+  return url !== null && url !== "" && url.includes('script.google.com');
 }
