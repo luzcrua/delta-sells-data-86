@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -5,7 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader, Check } from "lucide-react";
+import { Loader, Check, AlertCircle } from "lucide-react";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
@@ -13,13 +14,14 @@ import FormTextarea from "@/components/FormTextarea";
 import FormDatePicker from "@/components/FormDatePicker";
 import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
 import { formSchema, type FormValues } from "@/lib/validators";
-import { submitToGoogleSheets, getWebhookUrl } from "@/services/GoogleSheetsService";
+import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
 import LeadForm from "@/components/LeadForm";
 
 const Index = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [valorNumerico, setValorNumerico] = useState(0);
   const [freteNumerico, setFreteNumerico] = useState(15);
   const [activeTab, setActiveTab] = useState("cliente");
@@ -86,6 +88,7 @@ const Index = () => {
   const onSubmit = async (data: FormValues) => {
     console.log("Form submission triggered with data:", data);
     setIsSubmitting(true);
+    setSubmitError(null);
     
     try {
       const formattedData = {
@@ -105,22 +108,30 @@ const Index = () => {
           description: "Dados enviados com sucesso para a planilha.",
         });
         setSubmitted(true);
+        
+        // Só limpar o formulário após envio bem-sucedido
         setTimeout(() => {
           reset();
           setSubmitted(false);
         }, 3000);
       } else {
+        // Armazenar a mensagem de erro, mas não resetar o formulário
+        setSubmitError(result.message);
         toast({
-          title: "Erro",
+          title: "Aviso",
           description: result.message,
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error in form submission:", error);
+      
+      const errorMsg = error instanceof Error ? error.message : "Ocorreu um erro ao enviar os dados. Tente novamente.";
+      setSubmitError(errorMsg);
+      
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao enviar os dados. Tente novamente.",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
@@ -385,6 +396,17 @@ const Index = () => {
                     rows={4}
                   />
                 </div>
+                
+                {submitError && (
+                  <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 flex items-start">
+                    <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Erro no envio</p>
+                      <p className="text-sm">{submitError}</p>
+                      <p className="text-sm mt-1">Seus dados não foram perdidos. Tente novamente ou verifique a alternativa via WhatsApp.</p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-section flex justify-center pt-4">
                   <Button

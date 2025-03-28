@@ -150,11 +150,86 @@ function doPost(e) {
 //    e. Clique em "Implantar" e autorize o aplicativo
 //    f. Copie a URL do aplicativo da Web e substitua abaixo na const WEBHOOKURL
 
-// Coloque aqui a URL do seu webhook do Google Apps Script (substitua esta URL pela sua)
+// Coloque aqui a URL do seu webhook do Google Apps Script
 const WEBHOOK_URL = "https://script.google.com/macros/s/SUA_URL_AQUI/exec";
+
+// Número do WhatsApp para fallback (com código do país)
+const WHATSAPP_FALLBACK_NUMBER = "558293460460";
+
+/**
+ * Formata os dados para envio via WhatsApp
+ */
+function formatDataForWhatsApp(data: any): string {
+  let message = "📋 *DADOS DO ";
+  
+  if (data.formType === 'lead') {
+    message += "LEAD*\n\n";
+    message += `👤 *Nome:* ${data.nome}\n`;
+    message += `📱 *Telefone:* ${data.telefone}\n`;
+    
+    if (data.instagram) {
+      message += `📸 *Instagram:* ${data.instagram}\n`;
+    }
+    
+    message += `🎯 *Interesse:* ${data.interesse}\n`;
+    message += `🚩 *Status:* ${data.statusLead}\n`;
+    message += `📅 *Data Lembrete:* ${data.dataLembrete}\n`;
+    message += `🔔 *Motivo Lembrete:* ${data.motivoLembrete}\n`;
+    
+    if (data.observacoes) {
+      message += `📝 *Observações:* ${data.observacoes}\n`;
+    }
+  } else {
+    message += "CLIENTE*\n\n";
+    message += `👤 *Nome:* ${data.nome}\n`;
+    
+    if (data.cpf) {
+      message += `🆔 *CPF:* ${data.cpf}\n`;
+    }
+    
+    message += `📱 *Telefone:* ${data.telefone}\n`;
+    message += `⚧ *Gênero:* ${data.genero}\n`;
+    message += `📦 *Produto:* ${data.linha} ${data.tipo}\n`;
+    message += `🎨 *Cor:* ${data.cor}\n`;
+    message += `📏 *Tamanho:* ${data.tamanho}\n`;
+    message += `💰 *Valor:* ${data.valor}\n`;
+    message += `💳 *Forma Pagamento:* ${data.formaPagamento}\n`;
+    
+    if (data.localizacao) {
+      message += `📍 *Localização:* ${data.localizacao}\n`;
+    }
+    
+    message += `🚚 *Frete:* ${data.frete}\n`;
+    message += `📅 *Data Pagamento:* ${data.dataPagamento}\n`;
+    message += `📅 *Data Entrega:* ${data.dataEntrega}\n`;
+    message += `💵 *Valor Total:* ${data.valorTotal}\n`;
+    
+    if (data.observacao) {
+      message += `📝 *Observação:* ${data.observacao}\n`;
+    }
+  }
+  
+  message += "\n⚠️ *DADOS ENVIADOS AUTOMATICAMENTE COMO FALLBACK* ⚠️";
+  
+  return encodeURIComponent(message);
+}
+
+/**
+ * Envia dados para o WhatsApp como fallback
+ */
+export function sendToWhatsAppFallback(data: any): void {
+  const formattedMessage = formatDataForWhatsApp(data);
+  const whatsappUrl = `https://wa.me/${WHATSAPP_FALLBACK_NUMBER}?text=${formattedMessage}`;
+  
+  console.log("Abrindo WhatsApp como fallback:", whatsappUrl);
+  
+  // Abre o WhatsApp em uma nova janela
+  window.open(whatsappUrl, '_blank');
+}
 
 /**
  * Envia dados do formulário para o webhook do Google Sheets de forma segura
+ * Com fallback para WhatsApp em caso de falha
  */
 export async function submitToGoogleSheets(data: any, webhookUrlParam?: string): Promise<{ success: boolean; message: string }> {
   try {
@@ -163,13 +238,25 @@ export async function submitToGoogleSheets(data: any, webhookUrlParam?: string):
     // Usa o URL do parâmetro se fornecido, caso contrário usa o URL fixo
     const webhookUrl = webhookUrlParam || WEBHOOK_URL;
     
-    if (!webhookUrl) {
-      throw new Error("URL do webhook do Google Sheets não configurada");
+    if (!webhookUrl || webhookUrl === "https://script.google.com/macros/s/SUA_URL_AQUI/exec") {
+      console.warn("URL do webhook não configurada ou usando valor padrão");
+      console.log("Ativando fallback para WhatsApp");
+      sendToWhatsAppFallback(data);
+      return { 
+        success: false, 
+        message: "URL do webhook não configurada. Dados enviados para WhatsApp como alternativa." 
+      };
     }
     
     // Verifica se a URL parece válida (começa com https:// e contém script.google.com)
     if (!webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
-      throw new Error("URL do webhook inválida. Deve ser uma URL segura do Google Apps Script");
+      console.error("URL do webhook inválida");
+      console.log("Ativando fallback para WhatsApp");
+      sendToWhatsAppFallback(data);
+      return { 
+        success: false, 
+        message: "URL do webhook inválida. Dados enviados para WhatsApp como alternativa." 
+      };
     }
     
     console.log("Sending data to webhook:", webhookUrl);
@@ -206,9 +293,14 @@ export async function submitToGoogleSheets(data: any, webhookUrlParam?: string):
     }
   } catch (error) {
     console.error("Erro ao enviar para o Google Sheets:", error);
+    
+    // Ativar fallback para WhatsApp em caso de erro
+    console.log("Ativando fallback para WhatsApp devido a erro:", error);
+    sendToWhatsAppFallback(data);
+    
     return { 
       success: false, 
-      message: error instanceof Error ? error.message : "Erro desconhecido ao enviar dados" 
+      message: `Erro ao enviar para a planilha: ${error instanceof Error ? error.message : "Erro desconhecido"}. Dados enviados para WhatsApp como alternativa.` 
     };
   }
 }
