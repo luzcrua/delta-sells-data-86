@@ -80,7 +80,7 @@ const LeadForm: React.FC = () => {
 
   const openGoogleSheet = () => {
     LogService.info("Abrindo Google Sheet para visualização");
-    window.open(getGoogleSheetViewUrl(), '_blank');
+    window.open(getGoogleSheetViewUrl('lead'), '_blank');
   };
 
   const onSubmit = async (data: LeadFormValues) => {

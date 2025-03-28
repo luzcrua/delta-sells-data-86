@@ -112,7 +112,7 @@ const CustomerForm = () => {
 
   const openGoogleSheet = () => {
     LogService.info("Abrindo Google Sheet para visualização");
-    window.open(getGoogleSheetViewUrl(), '_blank');
+    window.open(getGoogleSheetViewUrl('cliente'), '_blank');
   };
 
   const onSubmit = async (data: FormValues) => {

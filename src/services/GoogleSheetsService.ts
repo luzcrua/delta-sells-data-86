@@ -154,8 +154,10 @@ function doPost(e) {
 // Número do WhatsApp para fallback (com código do país)
 const WHATSAPP_FALLBACK_NUMBER = "558293460460";
 
-// URL da planilha do Google Sheets para visualização
+// URLs das abas específicas da planilha do Google Sheets para visualização
 const GOOGLE_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit";
+const GOOGLE_SHEET_LEADS_TAB_URL = "https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit?gid=2074506371#gid=2074506371";
+const GOOGLE_SHEET_CUSTOMERS_TAB_URL = "https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit?gid=1972156622#gid=1972156622";
 
 // Classe de registro de log
 class Logger {
@@ -513,8 +515,13 @@ export function isWebhookConfigured(): boolean {
 }
 
 /**
- * Retorna a URL de visualização da planilha
+ * Retorna a URL de visualização da planilha com base no tipo de formulário
  */
-export function getGoogleSheetViewUrl(): string {
-  return GOOGLE_SHEET_VIEW_URL;
+export function getGoogleSheetViewUrl(formType?: 'cliente' | 'lead'): string {
+  if (formType === 'lead') {
+    return GOOGLE_SHEET_LEADS_TAB_URL;
+  } else if (formType === 'cliente') {
+    return GOOGLE_SHEET_CUSTOMERS_TAB_URL;
+  }
+  return GOOGLE_SHEET_VIEW_URL; // URL padrão se nenhum tipo for especificado
 }
