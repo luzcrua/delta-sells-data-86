@@ -41,7 +41,11 @@ const Index = () => {
 
         <div className="flex justify-center mb-6 border-b border-delta-200">
           <button
-            className={`tab-button ${activeTab === "cliente" ? "active" : ""}`}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === "cliente"
+                ? "text-delta-800 border-b-2 border-delta-600"
+                : "text-delta-500 hover:text-delta-700"
+            }`}
             onClick={() => {
               setActiveTab("cliente");
               LogService.info("Mudança de aba: Cliente");
@@ -50,7 +54,11 @@ const Index = () => {
             CLIENTE
           </button>
           <button
-            className={`tab-button ${activeTab === "lead" ? "active" : ""}`}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === "lead"
+                ? "text-delta-800 border-b-2 border-delta-600"
+                : "text-delta-500 hover:text-delta-700"
+            }`}
             onClick={() => {
               setActiveTab("lead");
               LogService.info("Mudança de aba: Lead");
@@ -60,11 +68,11 @@ const Index = () => {
           </button>
         </div>
 
-        <div className={`tab-panel ${activeTab === "cliente" ? "active" : ""}`}>
+        <div className={activeTab === "cliente" ? "block" : "hidden"}>
           <CustomerForm />
         </div>
 
-        <div className={`tab-panel ${activeTab === "lead" ? "active" : ""}`}>
+        <div className={activeTab === "lead" ? "block" : "hidden"}>
           <LeadForm />
         </div>
 
