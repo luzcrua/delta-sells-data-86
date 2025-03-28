@@ -7,3 +7,8 @@ export const GOOGLE_SHEETS_URL: string = "https://script.google.com/macros/s/AKf
 // Configuração de log
 export const LOG_ENABLED: boolean = true;
 export const LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error' = 'debug';
+
+// Configurações adicionais para contornar problemas de CORS
+export const USE_FORM_FALLBACK: boolean = true; // Usar método de formulário em vez de fetch
+export const MAX_RETRIES: number = 3; // Número máximo de tentativas
+export const RETRY_DELAY: number = 1000; // Tempo entre tentativas (ms)

@@ -1,6 +1,5 @@
-
 // This file provides helpers for Google Sheets integration
-import { GOOGLE_SHEETS_URL } from "../env";
+import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY } from "../env";
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
 // 1. Abra sua planilha do Google: https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit
@@ -146,8 +145,8 @@ function doPost(e) {
 // 4. Salve o script e implemente-o como um aplicativo da Web:
 //    a. Clique em "Implantar" > "Nova implantação"
 //    b. Selecione o tipo: "Aplicativo da Web"
-//    c. Configure "Executar como:" para "Eu" (sua conta do Google)
-//    d. Configure "Quem tem acesso:" para "Qualquer pessoa"
+//    c. Configure para: "Execute conforme o nível de acesso do usuário" (IMPORTANTE!)
+//    d. Configure "Quem tem acesso:" para "Qualquer pessoa, mesmo anônimos"
 //    e. Clique em "Implantar" e autorize o aplicativo
 //    f. Copie a URL do aplicativo da Web e configure no arquivo env.ts
 
@@ -431,61 +430,59 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     
     Logger.log("Tentando enviar dados para Google Sheets", { url: webhookUrl });
     
-    // Tentar diferentes métodos de envio, começando com fetch padrão
+    // Com base nas configurações, escolher o método de envio
     let result;
+    let attempts = 0;
+    let success = false;
     
-    try {
-      // Método 1: Fetch com CORS
-      Logger.log("Tentando método 1: Fetch padrão");
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-        mode: "cors",
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-      }
-      
-      result = await response.json();
-      Logger.log("Método 1 bem-sucedido", result);
-    } catch (error) {
-      Logger.log("Método 1 falhou, tentando método 2", { error });
+    while (attempts < MAX_RETRIES && !success) {
+      attempts++;
       
       try {
-        // Método 2: Formulário temporário
-        result = await sendWithForm(webhookUrl, data);
-        Logger.log("Método 2 bem-sucedido", result);
-      } catch (formError) {
-        Logger.log("Método 2 falhou, tentando método 3", { error: formError });
+        // Se a configuração indicar para usar o método de formulário diretamente
+        if (USE_FORM_FALLBACK) {
+          Logger.log(`Tentativa ${attempts}/${MAX_RETRIES} usando método de formulário`);
+          result = await sendWithForm(webhookUrl, data);
+          success = true;
+        } else {
+          // Tentar o método fetch primeiro
+          try {
+            Logger.log(`Tentativa ${attempts}/${MAX_RETRIES} usando fetch`);
+            const response = await fetch(webhookUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(data),
+              mode: "cors",
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Erro HTTP: ${response.status}`);
+            }
+            
+            result = await response.json();
+            success = true;
+          } catch (fetchError) {
+            Logger.log(`Fetch falhou na tentativa ${attempts}, tentando método alternativo`, { error: fetchError });
+            
+            // Falha no fetch, tentar com o método de formulário
+            result = await sendWithForm(webhookUrl, data);
+            success = true;
+          }
+        }
+      } catch (error) {
+        Logger.error(`Erro na tentativa ${attempts}`, error);
         
-        try {
-          // Método 3: JSONP
-          result = await sendWithJSONP(webhookUrl, data);
-          Logger.log("Método 3 bem-sucedido", result);
-        } catch (jsonpError) {
-          Logger.error("Todos os métodos falharam", { 
-            jsonpError, 
-            formType: data.formType 
-          });
-          
-          // Se tudo falhar, vamos simular sucesso, pois provavelmente é problema de CORS
-          // e os dados foram enviados com sucesso, só não conseguimos receber a resposta
-          Logger.log("Simulando resposta de sucesso após falhas de CORS");
-          
-          result = { 
-            result: "success", 
-            message: "Dados enviados! (A resposta do servidor não pôde ser lida devido a restrições do navegador, mas o envio foi concluído)",
-            simulatedResponse: true
-          };
+        // Se não for a última tentativa, esperar antes de tentar novamente
+        if (attempts < MAX_RETRIES) {
+          Logger.log(`Aguardando ${RETRY_DELAY}ms antes da próxima tentativa`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         }
       }
     }
     
-    if (result.result === "success" || result.simulatedResponse) {
+    if (success && result) {
       Logger.log("Envio concluído com sucesso");
       return { 
         success: true, 
@@ -493,7 +490,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
         redirectToSheet: true 
       };
     } else {
-      throw new Error(result.message || "Erro ao enviar dados");
+      throw new Error("Todas as tentativas de envio falharam");
     }
   } catch (error) {
     Logger.error("Erro final ao enviar para o Google Sheets", error);
