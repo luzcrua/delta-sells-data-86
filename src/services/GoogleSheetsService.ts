@@ -1,3 +1,4 @@
+
 // This file provides helpers for Google Sheets integration
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
@@ -100,7 +101,8 @@ function doPost(e) {
 //    c. Configure "Executar como:" para "Eu" (sua conta do Google)
 //    d. Configure "Quem tem acesso:" para "Qualquer pessoa"
 //    e. Clique em "Implantar" e autorize o aplicativo
-//    f. Copie a URL do aplicativo da Web - você precisará inserir esta URL na configuração do seu aplicativo
+//    f. Copie a URL do aplicativo da Web - esta URL deve ser inserida no botão 
+//       de configuração (ícone de engrenagem) no canto superior direito do formulário
 
 // IMPORTANTE: Segurança
 // 1. Nunca compartilhe a URL do webhook no código do repositório GitHub
