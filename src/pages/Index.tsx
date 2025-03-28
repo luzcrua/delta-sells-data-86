@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +14,7 @@ import FormDatePicker from "@/components/FormDatePicker";
 import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
 import { formSchema, type FormValues } from "@/lib/validators";
 import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
+import { format } from "date-fns";
 
 // Update this with your Google Apps Script web app URL
 const WEBHOOK_URL = "";
@@ -57,9 +57,7 @@ const Index = () => {
   const valor = watch("valor");
   const frete = watch("frete");
   
-  // Calculate total value whenever valor or frete changes
   useEffect(() => {
-    // Parse numeric values from currency strings
     const parsedValor = parseFloat(valor.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
     const parsedFrete = parseFloat(frete.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
     
@@ -90,7 +88,6 @@ const Index = () => {
     setIsSubmitting(true);
     
     try {
-      // Format dates to string format for Google Sheets
       const formattedData = {
         ...data,
         dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
@@ -147,7 +144,6 @@ const Index = () => {
         <Card className="shadow-lg">
           <CardContent className="p-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-              {/* Personal Information Section */}
               <div className="form-section space-y-4">
                 <h2 className="text-2xl font-semibold text-delta-800 mb-4">
                   Informações Pessoais
@@ -203,7 +199,6 @@ const Index = () => {
 
               <Separator />
 
-              {/* Product Information Section */}
               <div className="form-section space-y-4">
                 <h2 className="text-2xl font-semibold text-delta-800 mb-2">
                   Informações do Produto
@@ -286,7 +281,6 @@ const Index = () => {
 
               <Separator />
 
-              {/* Payment and Delivery Section */}
               <div className="form-section space-y-4">
                 <h2 className="text-2xl font-semibold text-delta-800 mb-4">
                   Pagamento e Entrega
@@ -338,7 +332,7 @@ const Index = () => {
                     error={errors.valorTotal?.message}
                     className="font-semibold"
                     required
-                    disabled
+                    readOnly
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -365,7 +359,6 @@ const Index = () => {
 
               <Separator />
 
-              {/* Observation Section */}
               <div className="form-section">
                 <FormTextarea
                   id="observacao"
@@ -378,7 +371,6 @@ const Index = () => {
                 />
               </div>
 
-              {/* Submit Button */}
               <div className="form-section flex justify-center pt-4">
                 <Button
                   type="submit"
