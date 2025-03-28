@@ -14,20 +14,13 @@ import FormTextarea from "@/components/FormTextarea";
 import FormDatePicker from "@/components/FormDatePicker";
 import { formatPhone, formatDate } from "@/lib/formatters";
 import { leadFormSchema, LeadFormValues } from "@/lib/leadValidators";
-import { submitToGoogleSheets, isWebhookConfigured } from "@/services/GoogleSheetsService";
+import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
-import { Link } from "react-router-dom";
 
 const LeadForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isWebhookConfigurationValid, setIsWebhookConfigurationValid] = useState(false);
-  
-  useEffect(() => {
-    // Verificar se o webhook está configurado
-    setIsWebhookConfigurationValid(isWebhookConfigured());
-  }, []);
   
   const {
     register,
@@ -121,19 +114,6 @@ const LeadForm: React.FC = () => {
   return (
     <Card className="shadow-lg">
       <CardContent className="p-6">
-        {!isWebhookConfigurationValid && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-800 flex items-start">
-            <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium">Webhook não configurado</p>
-              <p className="text-sm">O webhook do Google Sheets não está configurado corretamente. Os dados serão enviados via WhatsApp como alternativa.</p>
-              <Link to="/settings" className="text-delta-600 hover:text-delta-800 font-medium text-sm mt-1 inline-block">
-                Configurar webhook
-              </Link>
-            </div>
-          </div>
-        )}
-        
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           <div className="form-section space-y-4">
             <h2 className="text-2xl font-semibold text-delta-800 mb-4">

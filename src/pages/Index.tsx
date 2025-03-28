@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -5,7 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader, Check, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import { Loader, Check, AlertCircle } from "lucide-react";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
@@ -13,10 +14,9 @@ import FormTextarea from "@/components/FormTextarea";
 import FormDatePicker from "@/components/FormDatePicker";
 import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
 import { formSchema, type FormValues } from "@/lib/validators";
-import { submitToGoogleSheets, isWebhookConfigured } from "@/services/GoogleSheetsService";
+import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
 import LeadForm from "@/components/LeadForm";
-import { Link } from "react-router-dom";
 
 const Index = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,12 +25,6 @@ const Index = () => {
   const [valorNumerico, setValorNumerico] = useState(0);
   const [freteNumerico, setFreteNumerico] = useState(15);
   const [activeTab, setActiveTab] = useState("cliente");
-  const [isWebhookConfigurationValid, setIsWebhookConfigurationValid] = useState(false);
-  
-  useEffect(() => {
-    // Verificar se o webhook está configurado
-    setIsWebhookConfigurationValid(isWebhookConfigured());
-  }, []);
   
   const {
     register,
@@ -155,27 +149,7 @@ const Index = () => {
           <p className="text-delta-700 text-lg">
             Cadastro de clientes e registro de vendas
           </p>
-          <Link
-            to="/settings"
-            className="absolute right-0 top-0 text-delta-600 hover:text-delta-800 transition-colors"
-            title="Configurações"
-          >
-            <SettingsIcon className="h-6 w-6" />
-          </Link>
         </header>
-
-        {!isWebhookConfigurationValid && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-md p-4 text-amber-800 flex items-start">
-            <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium">Webhook não configurado</p>
-              <p className="text-sm">O webhook do Google Sheets não está configurado corretamente. Os dados serão enviados via WhatsApp como alternativa.</p>
-              <Link to="/settings" className="text-delta-600 hover:text-delta-800 font-medium text-sm mt-1 inline-block">
-                Configurar webhook
-              </Link>
-            </div>
-          </div>
-        )}
 
         <div className="flex justify-center mb-6 border-b border-delta-200">
           <button
@@ -200,7 +174,6 @@ const Index = () => {
                   <h2 className="text-2xl font-semibold text-delta-800 mb-4">
                     Informações Pessoais
                   </h2>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormInput
                       id="nome"
@@ -338,7 +311,6 @@ const Index = () => {
                   <h2 className="text-2xl font-semibold text-delta-800 mb-4">
                     Pagamento e Entrega
                   </h2>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormSelect
                       id="formaPagamento"
