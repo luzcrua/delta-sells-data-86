@@ -15,6 +15,7 @@ import FormDatePicker from "@/components/FormDatePicker";
 import { formatPhone, formatDate } from "@/lib/formatters";
 import { leadFormSchema, LeadFormValues } from "@/lib/leadValidators";
 import { submitToGoogleSheets, isWebhookConfigured, sendToWhatsAppFallback, getGoogleSheetViewUrl } from "@/services/GoogleSheetsService";
+import { LogService } from "@/services/LogService";
 import { format } from "date-fns";
 
 const LeadForm: React.FC = () => {
@@ -26,7 +27,9 @@ const LeadForm: React.FC = () => {
   
   useEffect(() => {
     // Verificar se a URL do webhook está configurada
-    setIsConfigured(isWebhookConfigured());
+    const configured = isWebhookConfigured();
+    setIsConfigured(configured);
+    LogService.info(`Formulário de Lead - Webhook configurado: ${configured}`);
   }, []);
   
   const {
@@ -67,6 +70,7 @@ const LeadForm: React.FC = () => {
   };
 
   const handleSendToWhatsApp = (data: LeadFormValues) => {
+    LogService.info("Redirecionando para envio via WhatsApp", { formType: "lead" });
     sendToWhatsAppFallback({
       ...data,
       dataLembrete: data.dataLembrete ? format(data.dataLembrete, "dd/MM/yy") : "",
@@ -75,11 +79,12 @@ const LeadForm: React.FC = () => {
   };
 
   const openGoogleSheet = () => {
+    LogService.info("Abrindo Google Sheet para visualização");
     window.open(getGoogleSheetViewUrl(), '_blank');
   };
 
   const onSubmit = async (data: LeadFormValues) => {
-    console.log("Lead form submission triggered with data:", data);
+    LogService.info("Lead form - Submissão iniciada", { nome: data.nome, telefone: data.telefone });
     setIsSubmitting(true);
     setSubmitError(null);
     setShowSheetLink(false);
@@ -91,11 +96,40 @@ const LeadForm: React.FC = () => {
         formType: 'lead', // Identificador para saber que é um formulário de lead
       };
       
-      console.log("Sending formatted lead data to Google Sheets:", formattedData);
-      const result = await submitToGoogleSheets(formattedData);
-      console.log("Response from Google Sheets for lead form:", result);
+      LogService.debug("Lead form - Dados formatados para envio", formattedData);
       
-      if (result.success) {
+      // Tentativas múltiplas para garantir que os dados sejam enviados
+      let attempt = 1;
+      let result;
+      
+      while (attempt <= 3) {
+        LogService.info(`Lead form - Tentativa ${attempt}/3 de envio`);
+        
+        try {
+          result = await submitToGoogleSheets(formattedData);
+          LogService.info(`Lead form - Resposta da tentativa ${attempt}`, result);
+          
+          if (result.success) {
+            break; // Sucesso, sai do loop
+          } else {
+            // Se não teve sucesso, mas não é um erro de rede, sai do loop
+            if (!result.message.includes("network") && !result.message.includes("CORS")) {
+              break;
+            }
+          }
+        } catch (innerError) {
+          LogService.error(`Lead form - Erro na tentativa ${attempt}`, innerError);
+        }
+        
+        // Incrementa tentativa e aguarda antes de tentar novamente
+        attempt++;
+        if (attempt <= 3) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if (result?.success) {
+        LogService.info("Lead form - Envio bem-sucedido");
         toast({
           title: "Sucesso!",
           description: "Dados do lead enviados com sucesso para a planilha.",
@@ -110,15 +144,17 @@ const LeadForm: React.FC = () => {
         }, 3000);
       } else {
         // Armazenar a mensagem de erro, mas não resetar o formulário
-        setSubmitError(result.message);
+        const errorMsg = result?.message || "Erro desconhecido ao enviar dados.";
+        LogService.warn("Lead form - Falha no envio", { errorMsg });
+        setSubmitError(errorMsg);
         toast({
           title: "Aviso",
-          description: result.message,
+          description: errorMsg,
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error("Error in lead form submission:", error);
+      LogService.error("Lead form - Erro crítico na submissão", error);
       const errorMsg = error instanceof Error ? error.message : "Ocorreu um erro ao enviar os dados. Tente novamente.";
       
       setSubmitError(errorMsg);

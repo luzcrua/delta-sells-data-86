@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +14,7 @@ import FormDatePicker from "@/components/FormDatePicker";
 import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
 import { formSchema, type FormValues } from "@/lib/validators";
 import { submitToGoogleSheets, isWebhookConfigured, sendToWhatsAppFallback, getGoogleSheetViewUrl } from "@/services/GoogleSheetsService";
+import { LogService } from "@/services/LogService";
 import { format } from "date-fns";
 import LeadForm from "@/components/LeadForm";
 
@@ -31,7 +31,12 @@ const Index = () => {
   
   useEffect(() => {
     // Verificar se a URL do webhook está configurada
-    setIsConfigured(isWebhookConfigured());
+    const configured = isWebhookConfigured();
+    setIsConfigured(configured);
+    LogService.info(`Index - Webhook configurado: ${configured}`);
+    
+    // Log de inicialização da página
+    LogService.info("Página Index carregada com sucesso");
   }, []);
 
   const {
@@ -75,6 +80,8 @@ const Index = () => {
     
     const total = parsedValor + parsedFrete;
     setValue("valorTotal", formatCurrency(String(total * 100)));
+    
+    LogService.debug("Valores atualizados", { parsedValor, parsedFrete, total });
   }, [valor, frete, setValue]);
 
   const handleInputChange = (field: keyof FormValues) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +101,7 @@ const Index = () => {
   };
 
   const handleSendToWhatsApp = (data: FormValues) => {
+    LogService.info("Redirecionando para envio via WhatsApp", { formType: "cliente" });
     sendToWhatsAppFallback({
       ...data,
       dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
@@ -103,11 +111,12 @@ const Index = () => {
   };
 
   const openGoogleSheet = () => {
+    LogService.info("Abrindo Google Sheet para visualização");
     window.open(getGoogleSheetViewUrl(), '_blank');
   };
 
   const onSubmit = async (data: FormValues) => {
-    console.log("Form submission triggered with data:", data);
+    LogService.info("Formulário de Cliente - Submissão iniciada", { nome: data.nome, telefone: data.telefone });
     setIsSubmitting(true);
     setSubmitError(null);
     setShowSheetLink(false);
@@ -120,11 +129,40 @@ const Index = () => {
         formType: 'cliente', // Identificador para saber que é um formulário de cliente
       };
       
-      console.log("Sending formatted data to Google Sheets:", formattedData);
-      const result = await submitToGoogleSheets(formattedData);
-      console.log("Response from Google Sheets:", result);
+      LogService.debug("Formulário de Cliente - Dados formatados para envio", formattedData);
       
-      if (result.success) {
+      // Tentativas múltiplas para garantir que os dados sejam enviados
+      let attempt = 1;
+      let result;
+      
+      while (attempt <= 3) {
+        LogService.info(`Formulário de Cliente - Tentativa ${attempt}/3 de envio`);
+        
+        try {
+          result = await submitToGoogleSheets(formattedData);
+          LogService.info(`Formulário de Cliente - Resposta da tentativa ${attempt}`, result);
+          
+          if (result.success) {
+            break; // Sucesso, sai do loop
+          } else {
+            // Se não teve sucesso, mas não é um erro de rede, sai do loop
+            if (!result.message.includes("network") && !result.message.includes("CORS")) {
+              break;
+            }
+          }
+        } catch (innerError) {
+          LogService.error(`Formulário de Cliente - Erro na tentativa ${attempt}`, innerError);
+        }
+        
+        // Incrementa tentativa e aguarda antes de tentar novamente
+        attempt++;
+        if (attempt <= 3) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if (result?.success) {
+        LogService.info("Formulário de Cliente - Envio bem-sucedido");
         toast({
           title: "Sucesso!",
           description: "Dados enviados com sucesso para a planilha.",
@@ -140,15 +178,17 @@ const Index = () => {
         }, 3000);
       } else {
         // Armazenar a mensagem de erro, mas não resetar o formulário
-        setSubmitError(result.message);
+        const errorMsg = result?.message || "Erro desconhecido ao enviar dados.";
+        LogService.warn("Formulário de Cliente - Falha no envio", { errorMsg });
+        setSubmitError(errorMsg);
         toast({
           title: "Aviso",
-          description: result.message,
+          description: errorMsg,
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error("Error in form submission:", error);
+      LogService.error("Formulário de Cliente - Erro crítico na submissão", error);
       
       const errorMsg = error instanceof Error ? error.message : "Ocorreu um erro ao enviar os dados. Tente novamente.";
       setSubmitError(errorMsg);
@@ -187,24 +227,28 @@ const Index = () => {
         <div className="flex justify-center mb-6 border-b border-delta-200">
           <button
             className={`tab-button ${activeTab === "cliente" ? "active" : ""}`}
-            onClick={() => setActiveTab("cliente")}
+            onClick={() => {
+              setActiveTab("cliente");
+              LogService.info("Mudança de aba: Cliente");
+            }}
           >
             CLIENTE
           </button>
           <button
             className={`tab-button ${activeTab === "lead" ? "active" : ""}`}
-            onClick={() => setActiveTab("lead")}
+            onClick={() => {
+              setActiveTab("lead");
+              LogService.info("Mudança de aba: Lead");
+            }}
           >
             LEAD
           </button>
         </div>
 
         <div className={`tab-panel ${activeTab === "cliente" ? "active" : ""}`}>
-          
           <Card className="shadow-lg">
             <CardContent className="p-6">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-                
                 
                 <div className="form-section space-y-4">
                   <h2 className="text-2xl font-semibold text-delta-800 mb-4">
