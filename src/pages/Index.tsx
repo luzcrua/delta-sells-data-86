@@ -11,6 +11,7 @@ import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
 import FormTextarea from "@/components/FormTextarea";
+import FormDatePicker from "@/components/FormDatePicker";
 import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
 import { formSchema, type FormValues } from "@/lib/validators";
 import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
@@ -37,16 +38,17 @@ const Index = () => {
       nome: "",
       cpf: "",
       telefone: "",
-      genero: "",
+      genero: "Masculino",
+      linha: "",
       tipo: "",
       cor: "",
       tamanho: "",
       valor: "",
-      formaPagamento: "",
+      formaPagamento: "PIX",
       localizacao: "",
       frete: "15,00",
-      dataPagamento: "",
-      dataEntrega: "",
+      dataPagamento: undefined,
+      dataEntrega: undefined,
       valorTotal: "R$ 15,00",
       observacao: "",
     },
@@ -80,11 +82,22 @@ const Index = () => {
     setValue(field, e.target.value);
   };
 
+  const handleDateChange = (field: keyof FormValues) => (date: Date | undefined) => {
+    setValue(field, date);
+  };
+
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     
     try {
-      const result = await submitToGoogleSheets(data, WEBHOOK_URL);
+      // Format dates to string format for Google Sheets
+      const formattedData = {
+        ...data,
+        dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
+        dataEntrega: data.dataEntrega ? format(data.dataEntrega, "dd/MM/yy") : "",
+      };
+      
+      const result = await submitToGoogleSheets(formattedData, WEBHOOK_URL);
       
       if (result.success) {
         toast({
@@ -152,12 +165,11 @@ const Index = () => {
                   <FormInput
                     id="cpf"
                     label="CPF"
-                    value={watch("cpf")}
+                    value={watch("cpf") || ""}
                     onChange={handleInputChange("cpf")}
                     placeholder="000.000.000-00"
                     error={errors.cpf?.message}
                     formatter={formatCPF}
-                    required
                     maxLength={14}
                   />
                 </div>
@@ -196,11 +208,21 @@ const Index = () => {
                 <h2 className="text-2xl font-semibold text-delta-800 mb-2">
                   Informações do Produto
                 </h2>
-                <h3 className="text-lg font-medium text-delta-600 mb-4">
-                  Oversized/Run Muscle
-                </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormCombobox
+                    id="linha"
+                    label="Linha"
+                    value={watch("linha")}
+                    onChange={handleSelectChange("linha")}
+                    onCustomInputChange={handleInputChange("linha")}
+                    options={[
+                      { value: "Oversized", label: "Oversized" },
+                      { value: "Run Muscle", label: "Run Muscle" },
+                    ]}
+                    error={errors.linha?.message}
+                    required
+                  />
                   <FormCombobox
                     id="tipo"
                     label="Tipo"
@@ -213,6 +235,8 @@ const Index = () => {
                     error={errors.tipo?.message}
                     required
                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormCombobox
                     id="cor"
                     label="Cor"
@@ -228,8 +252,6 @@ const Index = () => {
                     error={errors.cor?.message}
                     required
                   />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormCombobox
                     id="tamanho"
                     label="Tamanho"
@@ -247,6 +269,8 @@ const Index = () => {
                     error={errors.tamanho?.message}
                     required
                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                   <FormInput
                     id="valor"
                     label="Valor"
@@ -285,7 +309,7 @@ const Index = () => {
                   <FormInput
                     id="localizacao"
                     label="Localização"
-                    value={watch("localizacao")}
+                    value={watch("localizacao") || ""}
                     onChange={handleInputChange("localizacao")}
                     placeholder="Digite a localização de entrega"
                     error={errors.localizacao?.message}
@@ -318,27 +342,23 @@ const Index = () => {
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
+                  <FormDatePicker
                     id="dataPagamento"
                     label="Data de Pagamento"
                     value={watch("dataPagamento")}
-                    onChange={handleInputChange("dataPagamento")}
-                    placeholder="DD/MM/AA"
+                    onChange={handleDateChange("dataPagamento")}
                     error={errors.dataPagamento?.message}
-                    formatter={formatDate}
                     required
-                    maxLength={8}
+                    placeholder="Selecione a data de pagamento"
                   />
-                  <FormInput
+                  <FormDatePicker
                     id="dataEntrega"
                     label="Data de Entrega"
                     value={watch("dataEntrega")}
-                    onChange={handleInputChange("dataEntrega")}
-                    placeholder="DD/MM/AA"
+                    onChange={handleDateChange("dataEntrega")}
                     error={errors.dataEntrega?.message}
-                    formatter={formatDate}
                     required
-                    maxLength={8}
+                    placeholder="Selecione a data de entrega"
                   />
                 </div>
               </div>
@@ -350,7 +370,7 @@ const Index = () => {
                 <FormTextarea
                   id="observacao"
                   label="Observação"
-                  value={watch("observacao")}
+                  value={watch("observacao") || ""}
                   onChange={handleTextareaChange("observacao")}
                   placeholder="Digite informações adicionais, se necessário"
                   error={errors.observacao?.message}
