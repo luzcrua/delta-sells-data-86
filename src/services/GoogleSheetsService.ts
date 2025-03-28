@@ -253,7 +253,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     }
     
     // Verifica se a URL parece válida (começa com https:// e contém script.google.com)
-    if (!webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
+    if (typeof webhookUrl !== 'string' || !webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
       console.error("URL do Apps Script inválida");
       console.log("Ativando fallback para WhatsApp");
       sendToWhatsAppFallback(data);
@@ -329,5 +329,5 @@ export function getWebhookUrl(): string {
  * Verifica se a URL do webhook está configurada
  */
 export function isWebhookConfigured(): boolean {
-  return GOOGLE_SHEETS_URL !== null && GOOGLE_SHEETS_URL !== "" && GOOGLE_SHEETS_URL.includes('script.google.com');
+  return typeof GOOGLE_SHEETS_URL === 'string' && GOOGLE_SHEETS_URL !== "" && GOOGLE_SHEETS_URL.includes('script.google.com');
 }
