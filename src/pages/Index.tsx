@@ -1,11 +1,392 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState, useEffect, ChangeEvent } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Loader, Check } from "lucide-react";
+import FormInput from "@/components/FormInput";
+import FormSelect from "@/components/FormSelect";
+import FormCombobox from "@/components/FormCombobox";
+import FormTextarea from "@/components/FormTextarea";
+import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
+import { formSchema, type FormValues } from "@/lib/validators";
+import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
+
+// Update this with your Google Apps Script web app URL
+const WEBHOOK_URL = "";
 
 const Index = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [valorNumerico, setValorNumerico] = useState(0);
+  const [freteNumerico, setFreteNumerico] = useState(15);
+  
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+    reset,
+  } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      nome: "",
+      cpf: "",
+      telefone: "",
+      genero: "",
+      tipo: "",
+      cor: "",
+      tamanho: "",
+      valor: "",
+      formaPagamento: "",
+      localizacao: "",
+      frete: "15,00",
+      dataPagamento: "",
+      dataEntrega: "",
+      valorTotal: "R$ 15,00",
+      observacao: "",
+    },
+  });
+
+  const valor = watch("valor");
+  const frete = watch("frete");
+  
+  // Calculate total value whenever valor or frete changes
+  useEffect(() => {
+    // Parse numeric values from currency strings
+    const parsedValor = parseFloat(valor.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+    const parsedFrete = parseFloat(frete.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+    
+    setValorNumerico(parsedValor);
+    setFreteNumerico(parsedFrete);
+    
+    const total = parsedValor + parsedFrete;
+    setValue("valorTotal", formatCurrency(String(total * 100)));
+  }, [valor, frete, setValue]);
+
+  const handleInputChange = (field: keyof FormValues) => (e: ChangeEvent<HTMLInputElement>) => {
+    setValue(field, e.target.value);
+  };
+
+  const handleSelectChange = (field: keyof FormValues) => (value: string) => {
+    setValue(field, value);
+  };
+
+  const handleTextareaChange = (field: keyof FormValues) => (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(field, e.target.value);
+  };
+
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
+    
+    try {
+      const result = await submitToGoogleSheets(data, WEBHOOK_URL);
+      
+      if (result.success) {
+        toast({
+          title: "Sucesso!",
+          description: "Dados enviados com sucesso para a planilha.",
+        });
+        setSubmitted(true);
+        setTimeout(() => {
+          reset();
+          setSubmitted(false);
+        }, 3000);
+      } else {
+        toast({
+          title: "Erro",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao enviar os dados. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReset = () => {
+    reset();
+    setSubmitted(false);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gradient-to-br from-delta-50 to-delta-100 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        <header className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-delta-950 mb-2">
+            DELTA SELLS CLIENTS
+          </h1>
+          <p className="text-delta-700 text-lg">
+            Cadastro de clientes e registro de vendas
+          </p>
+        </header>
+
+        <Card className="shadow-lg">
+          <CardContent className="p-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              {/* Personal Information Section */}
+              <div className="form-section space-y-4">
+                <h2 className="text-2xl font-semibold text-delta-800 mb-4">
+                  Informações Pessoais
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    id="nome"
+                    label="Nome"
+                    value={watch("nome")}
+                    onChange={handleInputChange("nome")}
+                    placeholder="Digite o nome completo"
+                    error={errors.nome?.message}
+                    required
+                  />
+                  <FormInput
+                    id="cpf"
+                    label="CPF"
+                    value={watch("cpf")}
+                    onChange={handleInputChange("cpf")}
+                    placeholder="000.000.000-00"
+                    error={errors.cpf?.message}
+                    formatter={formatCPF}
+                    required
+                    maxLength={14}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    id="telefone"
+                    label="Telefone"
+                    value={watch("telefone")}
+                    onChange={handleInputChange("telefone")}
+                    placeholder="(00) 00000-0000"
+                    error={errors.telefone?.message}
+                    formatter={formatPhone}
+                    required
+                    maxLength={15}
+                  />
+                  <FormSelect
+                    id="genero"
+                    label="Gênero"
+                    value={watch("genero")}
+                    onChange={handleSelectChange("genero")}
+                    options={[
+                      { value: "Masculino", label: "Masculino" },
+                      { value: "Feminino", label: "Feminino" },
+                      { value: "Outro", label: "Outro" },
+                    ]}
+                    error={errors.genero?.message}
+                    required
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Product Information Section */}
+              <div className="form-section space-y-4">
+                <h2 className="text-2xl font-semibold text-delta-800 mb-2">
+                  Informações do Produto
+                </h2>
+                <h3 className="text-lg font-medium text-delta-600 mb-4">
+                  Oversized/Run Muscle
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormCombobox
+                    id="tipo"
+                    label="Tipo"
+                    value={watch("tipo")}
+                    onChange={handleSelectChange("tipo")}
+                    onCustomInputChange={handleInputChange("tipo")}
+                    options={[
+                      { value: "Camisa", label: "Camisa" },
+                    ]}
+                    error={errors.tipo?.message}
+                    required
+                  />
+                  <FormCombobox
+                    id="cor"
+                    label="Cor"
+                    value={watch("cor")}
+                    onChange={handleSelectChange("cor")}
+                    onCustomInputChange={handleInputChange("cor")}
+                    options={[
+                      { value: "OFF WHITE", label: "OFF WHITE" },
+                      { value: "Preto", label: "Preto" },
+                      { value: "Branco", label: "Branco" },
+                      { value: "Cinza", label: "Cinza" },
+                    ]}
+                    error={errors.cor?.message}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormCombobox
+                    id="tamanho"
+                    label="Tamanho"
+                    value={watch("tamanho")}
+                    onChange={handleSelectChange("tamanho")}
+                    onCustomInputChange={handleInputChange("tamanho")}
+                    options={[
+                      { value: "XPP", label: "XPP" },
+                      { value: "PP", label: "PP" },
+                      { value: "P", label: "P" },
+                      { value: "M", label: "M" },
+                      { value: "G", label: "G" },
+                      { value: "GG", label: "GG" },
+                    ]}
+                    error={errors.tamanho?.message}
+                    required
+                  />
+                  <FormInput
+                    id="valor"
+                    label="Valor"
+                    value={watch("valor")}
+                    onChange={handleInputChange("valor")}
+                    placeholder="R$ 0,00"
+                    error={errors.valor?.message}
+                    formatter={formatCurrency}
+                    required
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Payment and Delivery Section */}
+              <div className="form-section space-y-4">
+                <h2 className="text-2xl font-semibold text-delta-800 mb-4">
+                  Pagamento e Entrega
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormSelect
+                    id="formaPagamento"
+                    label="Forma de Pagamento"
+                    value={watch("formaPagamento")}
+                    onChange={handleSelectChange("formaPagamento")}
+                    options={[
+                      { value: "PIX", label: "PIX" },
+                      { value: "Débito", label: "Débito" },
+                      { value: "Crédito", label: "Crédito" },
+                      { value: "Dinheiro", label: "Dinheiro" },
+                    ]}
+                    error={errors.formaPagamento?.message}
+                    required
+                  />
+                  <FormInput
+                    id="localizacao"
+                    label="Localização"
+                    value={watch("localizacao")}
+                    onChange={handleInputChange("localizacao")}
+                    placeholder="Digite a localização de entrega"
+                    error={errors.localizacao?.message}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormCombobox
+                    id="frete"
+                    label="Frete"
+                    value={watch("frete")}
+                    onChange={handleSelectChange("frete")}
+                    onCustomInputChange={handleInputChange("frete")}
+                    options={[
+                      { value: "15,00", label: "R$ 15,00" },
+                      { value: "0,00", label: "Grátis" },
+                    ]}
+                    error={errors.frete?.message}
+                    required
+                  />
+                  <FormInput
+                    id="valorTotal"
+                    label="Valor Total"
+                    value={watch("valorTotal")}
+                    onChange={handleInputChange("valorTotal")}
+                    placeholder="R$ 0,00"
+                    error={errors.valorTotal?.message}
+                    className="font-semibold"
+                    required
+                    disabled
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    id="dataPagamento"
+                    label="Data de Pagamento"
+                    value={watch("dataPagamento")}
+                    onChange={handleInputChange("dataPagamento")}
+                    placeholder="DD/MM/AA"
+                    error={errors.dataPagamento?.message}
+                    formatter={formatDate}
+                    required
+                    maxLength={8}
+                  />
+                  <FormInput
+                    id="dataEntrega"
+                    label="Data de Entrega"
+                    value={watch("dataEntrega")}
+                    onChange={handleInputChange("dataEntrega")}
+                    placeholder="DD/MM/AA"
+                    error={errors.dataEntrega?.message}
+                    formatter={formatDate}
+                    required
+                    maxLength={8}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Observation Section */}
+              <div className="form-section">
+                <FormTextarea
+                  id="observacao"
+                  label="Observação"
+                  value={watch("observacao")}
+                  onChange={handleTextareaChange("observacao")}
+                  placeholder="Digite informações adicionais, se necessário"
+                  error={errors.observacao?.message}
+                  rows={4}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="form-section flex justify-center pt-4">
+                <Button
+                  type="submit"
+                  className="w-full md:w-1/2 h-12 bg-delta-600 hover:bg-delta-700 text-white font-semibold text-lg transition-colors"
+                  disabled={isSubmitting || submitted}
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader className="h-5 w-5 animate-spin" />
+                      Enviando...
+                    </span>
+                  ) : submitted ? (
+                    <span className="flex items-center gap-2">
+                      <Check className="h-5 w-5" />
+                      Enviado com Sucesso!
+                    </span>
+                  ) : (
+                    "Enviar Dados"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <footer className="mt-8 text-center text-delta-700 text-sm">
+          <p>© 2023 DELTA SELLS. Todos os direitos reservados.</p>
+        </footer>
       </div>
     </div>
   );
