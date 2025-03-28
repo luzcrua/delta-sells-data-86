@@ -19,7 +19,7 @@ function doPost(e) {
     let sheetName = "recebendoDadosDasVendas"; // Padrão para formulário de clientes
     
     if (data.formType === 'lead') {
-      sheetName = "Leads"; // Planilha para leads
+      sheetName = "recebendoDadosDeLeads"; // Planilha para leads
     }
     
     // Obter a planilha ativa
