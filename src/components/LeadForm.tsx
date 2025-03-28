@@ -16,11 +16,7 @@ import { leadFormSchema, LeadFormValues } from "@/lib/leadValidators";
 import { submitToGoogleSheets } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
 
-interface LeadFormProps {
-  webhookUrl: string;
-}
-
-const LeadForm: React.FC<LeadFormProps> = ({ webhookUrl }) => {
+const LeadForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   
@@ -66,10 +62,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ webhookUrl }) => {
     setIsSubmitting(true);
     
     try {
-      if (!webhookUrl) {
-        throw new Error("URL do webhook do Google Sheets não configurada");
-      }
-      
       const formattedData = {
         ...data,
         dataLembrete: data.dataLembrete ? format(data.dataLembrete, "dd/MM/yy") : "",
@@ -77,7 +69,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ webhookUrl }) => {
       };
       
       console.log("Sending formatted lead data to Google Sheets:", formattedData);
-      const result = await submitToGoogleSheets(formattedData, webhookUrl);
+      const result = await submitToGoogleSheets(formattedData);
       console.log("Response from Google Sheets for lead form:", result);
       
       if (result.success) {
@@ -228,7 +220,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ webhookUrl }) => {
             <Button
               type="submit"
               className="w-full md:w-1/2 h-12 bg-delta-600 hover:bg-delta-700 text-white font-semibold text-lg transition-colors"
-              disabled={isSubmitting || submitted || !webhookUrl}
+              disabled={isSubmitting || submitted}
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
@@ -240,8 +232,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ webhookUrl }) => {
                   <Check className="h-5 w-5" />
                   Enviado com Sucesso!
                 </span>
-              ) : !webhookUrl ? (
-                "Configure o Webhook Primeiro"
               ) : (
                 "Enviar Dados do Lead"
               )}

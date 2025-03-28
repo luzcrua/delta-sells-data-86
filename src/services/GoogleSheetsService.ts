@@ -148,15 +148,20 @@ function doPost(e) {
 //    c. Configure "Executar como:" para "Eu" (sua conta do Google)
 //    d. Configure "Quem tem acesso:" para "Qualquer pessoa"
 //    e. Clique em "Implantar" e autorize o aplicativo
-//    f. Copie a URL do aplicativo da Web - esta URL deve ser inserida no botão 
-//       de configuração (ícone de engrenagem) no canto superior direito do formulário
+//    f. Copie a URL do aplicativo da Web e substitua abaixo na const WEBHOOKURL
+
+// Coloque aqui a URL do seu webhook do Google Apps Script (substitua esta URL pela sua)
+const WEBHOOK_URL = "https://script.google.com/macros/s/SUA_URL_AQUI/exec";
 
 /**
  * Envia dados do formulário para o webhook do Google Sheets de forma segura
  */
-export async function submitToGoogleSheets(data: any, webhookUrl: string): Promise<{ success: boolean; message: string }> {
+export async function submitToGoogleSheets(data: any, webhookUrlParam?: string): Promise<{ success: boolean; message: string }> {
   try {
     console.log("Starting submission to Google Sheets...");
+    
+    // Usa o URL do parâmetro se fornecido, caso contrário usa o URL fixo
+    const webhookUrl = webhookUrlParam || WEBHOOK_URL;
     
     if (!webhookUrl) {
       throw new Error("URL do webhook do Google Sheets não configurada");
@@ -221,7 +226,7 @@ export function saveWebhookUrl(url: string): void {
  * Recupera a URL do webhook do localStorage
  */
 export function getWebhookUrl(): string {
-  return localStorage.getItem("google_sheets_webhook_url") || "";
+  return localStorage.getItem("google_sheets_webhook_url") || WEBHOOK_URL;
 }
 
 /**

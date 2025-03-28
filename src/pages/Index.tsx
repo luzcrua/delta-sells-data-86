@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader, Check, Settings } from "lucide-react";
+import { Loader, Check } from "lucide-react";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
@@ -13,19 +13,8 @@ import FormTextarea from "@/components/FormTextarea";
 import FormDatePicker from "@/components/FormDatePicker";
 import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
 import { formSchema, type FormValues } from "@/lib/validators";
-import { submitToGoogleSheets, saveWebhookUrl, getWebhookUrl } from "@/services/GoogleSheetsService";
+import { submitToGoogleSheets, getWebhookUrl } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import LeadForm from "@/components/LeadForm";
 
 const Index = () => {
@@ -33,8 +22,6 @@ const Index = () => {
   const [submitted, setSubmitted] = useState(false);
   const [valorNumerico, setValorNumerico] = useState(0);
   const [freteNumerico, setFreteNumerico] = useState(15);
-  const [webhookUrl, setWebhookUrl] = useState(getWebhookUrl);
-  const [configOpen, setConfigOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("cliente");
   
   const {
@@ -96,24 +83,11 @@ const Index = () => {
     setValue(field, date);
   };
 
-  const handleSaveWebhookUrl = () => {
-    saveWebhookUrl(webhookUrl);
-    setConfigOpen(false);
-    toast({
-      title: "Configuração Salva",
-      description: "URL do webhook do Google Sheets foi salva com sucesso.",
-    });
-  };
-
   const onSubmit = async (data: FormValues) => {
     console.log("Form submission triggered with data:", data);
     setIsSubmitting(true);
     
     try {
-      if (!webhookUrl) {
-        throw new Error("URL do webhook do Google Sheets não configurada");
-      }
-      
       const formattedData = {
         ...data,
         dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
@@ -122,7 +96,7 @@ const Index = () => {
       };
       
       console.log("Sending formatted data to Google Sheets:", formattedData);
-      const result = await submitToGoogleSheets(formattedData, webhookUrl);
+      const result = await submitToGoogleSheets(formattedData);
       console.log("Response from Google Sheets:", result);
       
       if (result.success) {
@@ -164,45 +138,6 @@ const Index = () => {
           <p className="text-delta-700 text-lg">
             Cadastro de clientes e registro de vendas
           </p>
-          
-          <Dialog open={configOpen} onOpenChange={setConfigOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="absolute right-0 top-0"
-                title="Configurar Webhook"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Configuração do Google Sheets</DialogTitle>
-                <DialogDescription>
-                  Configure a URL do webhook do Google Sheets para envio dos dados. 
-                  Esta URL deve ser obtida após fazer o deploy do script no Google Apps Script.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex flex-col gap-4 py-4">
-                <Label htmlFor="webhook-url" className="text-left">
-                  URL do Webhook
-                </Label>
-                <Input
-                  id="webhook-url"
-                  value={webhookUrl}
-                  onChange={(e) => setWebhookUrl(e.target.value)}
-                  placeholder="Cole aqui a URL do webhook do Google Apps Script"
-                  className="w-full"
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" onClick={handleSaveWebhookUrl}>
-                  Salvar Configuração
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </header>
 
         <div className="flex justify-center mb-6 border-b border-delta-200">
@@ -455,7 +390,7 @@ const Index = () => {
                   <Button
                     type="submit"
                     className="w-full md:w-1/2 h-12 bg-delta-600 hover:bg-delta-700 text-white font-semibold text-lg transition-colors"
-                    disabled={isSubmitting || submitted || !webhookUrl}
+                    disabled={isSubmitting || submitted}
                   >
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">
@@ -467,8 +402,6 @@ const Index = () => {
                         <Check className="h-5 w-5" />
                         Enviado com Sucesso!
                       </span>
-                    ) : !webhookUrl ? (
-                      "Configure o Webhook Primeiro"
                     ) : (
                       "Enviar Dados"
                     )}
@@ -480,7 +413,7 @@ const Index = () => {
         </div>
 
         <div className={`tab-panel ${activeTab === "lead" ? "active" : ""}`}>
-          <LeadForm webhookUrl={webhookUrl} />
+          <LeadForm />
         </div>
 
         <footer className="mt-8 text-center text-delta-700 text-sm">
