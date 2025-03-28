@@ -1,5 +1,5 @@
-
 // This file provides helpers for Google Sheets integration
+import { GOOGLE_SHEETS_URL } from "../env";
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
 // 1. Abra sua planilha do Google: https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit
@@ -239,16 +239,16 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
   try {
     console.log("Starting submission to Google Sheets...");
     
-    // Obter a URL do Apps Script do localStorage
-    const webhookUrl = getWebhookUrl();
+    // Obter a URL do Apps Script do env.ts
+    const webhookUrl = GOOGLE_SHEETS_URL;
     
     if (!webhookUrl) {
-      console.warn("URL do Apps Script não configurada");
+      console.warn("URL do Apps Script não configurada em env.ts");
       console.log("Ativando fallback para WhatsApp");
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
-        message: "URL do Apps Script não configurada. Configure em Configurações ou use o WhatsApp como alternativa." 
+        message: "URL do Apps Script não configurada no arquivo env.ts. Configure o arquivo ou use o WhatsApp como alternativa." 
       };
     }
     
@@ -259,7 +259,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
-        message: "URL do Apps Script inválida. Configure corretamente em Configurações ou use o WhatsApp como alternativa." 
+        message: "URL do Apps Script inválida no arquivo env.ts. Configure corretamente ou use o WhatsApp como alternativa." 
       };
     }
     
@@ -329,6 +329,5 @@ export function getWebhookUrl(): string {
  * Verifica se a URL do webhook está configurada
  */
 export function isWebhookConfigured(): boolean {
-  const url = getWebhookUrl();
-  return url !== null && url !== "" && url.includes('script.google.com');
+  return GOOGLE_SHEETS_URL !== null && GOOGLE_SHEETS_URL !== "" && GOOGLE_SHEETS_URL.includes('script.google.com');
 }

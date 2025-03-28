@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Loader, Check, AlertCircle } from "lucide-react";
-import { Link } from "react-router-dom";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
@@ -17,6 +15,7 @@ import { formatPhone, formatDate } from "@/lib/formatters";
 import { leadFormSchema, LeadFormValues } from "@/lib/leadValidators";
 import { submitToGoogleSheets, isWebhookConfigured } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
 
 const LeadForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,10 +123,7 @@ const LeadForm: React.FC = () => {
         {!isConfigured && (
           <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-md">
             <p className="text-sm">
-              ⚠️ A URL do App Script não está configurada. 
-              <Link to="/settings" className="ml-1 font-medium underline">
-                Configure agora
-              </Link> para habilitar o envio direto para o Google Sheets.
+              ⚠️ A URL do App Script não está configurada no arquivo env.ts. Configure o arquivo para habilitar o envio direto para o Google Sheets.
             </p>
           </div>
         )}
