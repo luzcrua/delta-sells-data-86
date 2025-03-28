@@ -154,6 +154,9 @@ function doPost(e) {
 // Número do WhatsApp para fallback (com código do país)
 const WHATSAPP_FALLBACK_NUMBER = "558293460460";
 
+// URL da planilha do Google Sheets para visualização
+const GOOGLE_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit";
+
 /**
  * Formata os dados para envio via WhatsApp
  */
@@ -219,24 +222,28 @@ export function sendToWhatsAppFallback(data: any): void {
   const formattedMessage = formatDataForWhatsApp(data);
   const whatsappUrl = `https://wa.me/${WHATSAPP_FALLBACK_NUMBER}?text=${formattedMessage}`;
   
-  console.log("Abrindo WhatsApp como fallback:", whatsappUrl);
+  const confirmMessage = "Não foi possível enviar os dados para a planilha. Deseja enviar via WhatsApp?";
   
-  // Abre o WhatsApp em uma nova janela
-  window.open(whatsappUrl, '_blank');
+  if (window.confirm(confirmMessage)) {
+    console.log("Abrindo WhatsApp como fallback:", whatsappUrl);
+    window.open(whatsappUrl, '_blank');
+  } else {
+    console.log("Usuário cancelou o envio para WhatsApp");
+  }
 }
 
 /**
  * Envia dados do formulário para o webhook do Google Sheets de forma segura
  * Com fallback para WhatsApp em caso de falha
  */
-export async function submitToGoogleSheets(data: any): Promise<{ success: boolean; message: string }> {
+export async function submitToGoogleSheets(data: any): Promise<{ success: boolean; message: string; redirectToSheet?: boolean }> {
   try {
     console.log("Starting submission to Google Sheets...");
     
     // Obter a URL do Apps Script do env.ts
     const webhookUrl = GOOGLE_SHEETS_URL;
     
-    if (!webhookUrl) {
+    if (!webhookUrl || typeof webhookUrl !== 'string') {
       console.warn("URL do Apps Script não configurada em env.ts");
       console.log("Ativando fallback para WhatsApp");
       sendToWhatsAppFallback(data);
@@ -247,7 +254,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     }
     
     // Verifica se a URL parece válida (começa com https:// e contém script.google.com)
-    if (typeof webhookUrl !== 'string' || !webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
+    if (!webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
       console.error("URL do Apps Script inválida");
       console.log("Ativando fallback para WhatsApp");
       sendToWhatsAppFallback(data);
@@ -285,20 +292,21 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     }
     
     if (result.result === "success") {
-      return { success: true, message: result.message || "Dados enviados com sucesso!" };
+      return { 
+        success: true, 
+        message: result.message || "Dados enviados com sucesso para a planilha!", 
+        redirectToSheet: true 
+      };
     } else {
       throw new Error(result.message || "Erro ao enviar dados");
     }
   } catch (error) {
     console.error("Erro ao enviar para o Google Sheets:", error);
     
-    // Ativar fallback para WhatsApp em caso de erro
-    console.log("Ativando fallback para WhatsApp devido a erro:", error);
-    sendToWhatsAppFallback(data);
-    
+    // Não ativa fallback para WhatsApp automaticamente, apenas retorna o erro
     return { 
       success: false, 
-      message: `Erro ao enviar para a planilha: ${error instanceof Error ? error.message : "Erro desconhecido"}. Dados enviados para WhatsApp como alternativa.` 
+      message: `Erro ao enviar para a planilha: ${error instanceof Error ? error.message : "Erro desconhecido"}. Você pode enviar os dados via WhatsApp como alternativa.` 
     };
   }
 }
@@ -307,5 +315,13 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
  * Verifica se a URL do webhook está configurada
  */
 export function isWebhookConfigured(): boolean {
-  return typeof GOOGLE_SHEETS_URL === 'string' && GOOGLE_SHEETS_URL !== "" && GOOGLE_SHEETS_URL.includes('script.google.com');
+  const url = GOOGLE_SHEETS_URL;
+  return typeof url === 'string' && url !== "" && url.includes('script.google.com');
+}
+
+/**
+ * Retorna a URL de visualização da planilha
+ */
+export function getGoogleSheetViewUrl(): string {
+  return GOOGLE_SHEET_VIEW_URL;
 }

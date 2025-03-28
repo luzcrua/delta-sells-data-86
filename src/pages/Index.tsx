@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -5,8 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader, Check, AlertCircle, Settings as SettingsIcon } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Loader, Check, AlertCircle, ExternalLink } from "lucide-react";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
@@ -14,7 +14,7 @@ import FormTextarea from "@/components/FormTextarea";
 import FormDatePicker from "@/components/FormDatePicker";
 import { formatCPF, formatPhone, formatCurrency, formatDate } from "@/lib/formatters";
 import { formSchema, type FormValues } from "@/lib/validators";
-import { submitToGoogleSheets, isWebhookConfigured } from "@/services/GoogleSheetsService";
+import { submitToGoogleSheets, isWebhookConfigured, sendToWhatsAppFallback, getGoogleSheetViewUrl } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
 import LeadForm from "@/components/LeadForm";
 
@@ -27,12 +27,12 @@ const Index = () => {
   const [freteNumerico, setFreteNumerico] = useState(15);
   const [activeTab, setActiveTab] = useState("cliente");
   const [isConfigured, setIsConfigured] = useState(false);
+  const [showSheetLink, setShowSheetLink] = useState(false);
   
   useEffect(() => {
     // Verificar se a URL do webhook está configurada
     setIsConfigured(isWebhookConfigured());
   }, []);
-  
 
   const {
     register,
@@ -93,11 +93,24 @@ const Index = () => {
     setValue(field, date);
   };
 
+  const handleSendToWhatsApp = (data: FormValues) => {
+    sendToWhatsAppFallback({
+      ...data,
+      dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
+      dataEntrega: data.dataEntrega ? format(data.dataEntrega, "dd/MM/yy") : "",
+      formType: 'cliente',
+    });
+  };
+
+  const openGoogleSheet = () => {
+    window.open(getGoogleSheetViewUrl(), '_blank');
+  };
+
   const onSubmit = async (data: FormValues) => {
-    
     console.log("Form submission triggered with data:", data);
     setIsSubmitting(true);
     setSubmitError(null);
+    setShowSheetLink(false);
     
     try {
       const formattedData = {
@@ -117,11 +130,13 @@ const Index = () => {
           description: "Dados enviados com sucesso para a planilha.",
         });
         setSubmitted(true);
+        setShowSheetLink(true);
         
         // Só limpar o formulário após envio bem-sucedido
         setTimeout(() => {
           reset();
           setSubmitted(false);
+          // Não esconder o link da planilha, apenas resetar o formulário
         }, 3000);
       } else {
         // Armazenar a mensagem de erro, mas não resetar o formulário
@@ -163,10 +178,7 @@ const Index = () => {
           {!isConfigured && (
             <div className="mt-4 bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-md">
               <p className="text-sm">
-                ⚠️ A URL do App Script não está configurada no arquivo env.ts. 
-                <Link to="/settings" className="ml-1 font-medium underline">
-                  Configure agora
-                </Link> para habilitar o envio direto para o Google Sheets.
+                ⚠️ A URL do App Script não está configurada no arquivo env.ts. Configure o arquivo para habilitar o envio direto para o Google Sheets.
               </p>
             </div>
           )}
@@ -421,13 +433,37 @@ const Index = () => {
                   />
                 </div>
                 
+                {showSheetLink && (
+                  <div className="bg-green-50 border border-green-200 text-green-800 rounded-md p-4 flex items-start">
+                    <Check className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Dados enviados com sucesso!</p>
+                      <p className="text-sm">Os dados foram registrados na planilha.</p>
+                      <button 
+                        type="button"
+                        onClick={openGoogleSheet}
+                        className="text-sm mt-2 flex items-center text-green-700 hover:text-green-900 font-medium"
+                      >
+                        Ver na planilha <ExternalLink className="h-4 w-4 ml-1" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {submitError && (
                   <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 flex items-start">
                     <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="font-medium">Erro no envio</p>
                       <p className="text-sm">{submitError}</p>
-                      <p className="text-sm mt-1">Seus dados não foram perdidos. Tente novamente ou verifique a alternativa via WhatsApp.</p>
+                      <p className="text-sm mt-1">Seus dados não foram perdidos.</p>
+                      <button 
+                        type="button"
+                        onClick={() => handleSendToWhatsApp(watch())}
+                        className="mt-2 text-sm text-red-700 hover:text-red-900 font-medium flex items-center"
+                      >
+                        Enviar via WhatsApp <ExternalLink className="h-4 w-4 ml-1" />
+                      </button>
                     </div>
                   </div>
                 )}

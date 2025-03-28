@@ -6,7 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader, Check, AlertCircle } from "lucide-react";
+import { Loader, Check, AlertCircle, ExternalLink } from "lucide-react";
 import FormInput from "@/components/FormInput";
 import FormSelect from "@/components/FormSelect";
 import FormCombobox from "@/components/FormCombobox";
@@ -14,7 +14,7 @@ import FormTextarea from "@/components/FormTextarea";
 import FormDatePicker from "@/components/FormDatePicker";
 import { formatPhone, formatDate } from "@/lib/formatters";
 import { leadFormSchema, LeadFormValues } from "@/lib/leadValidators";
-import { submitToGoogleSheets, isWebhookConfigured } from "@/services/GoogleSheetsService";
+import { submitToGoogleSheets, isWebhookConfigured, sendToWhatsAppFallback, getGoogleSheetViewUrl } from "@/services/GoogleSheetsService";
 import { format } from "date-fns";
 
 const LeadForm: React.FC = () => {
@@ -22,6 +22,7 @@ const LeadForm: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
+  const [showSheetLink, setShowSheetLink] = useState(false);
   
   useEffect(() => {
     // Verificar se a URL do webhook está configurada
@@ -65,10 +66,23 @@ const LeadForm: React.FC = () => {
     setValue(field, date);
   };
 
+  const handleSendToWhatsApp = (data: LeadFormValues) => {
+    sendToWhatsAppFallback({
+      ...data,
+      dataLembrete: data.dataLembrete ? format(data.dataLembrete, "dd/MM/yy") : "",
+      formType: 'lead',
+    });
+  };
+
+  const openGoogleSheet = () => {
+    window.open(getGoogleSheetViewUrl(), '_blank');
+  };
+
   const onSubmit = async (data: LeadFormValues) => {
     console.log("Lead form submission triggered with data:", data);
     setIsSubmitting(true);
     setSubmitError(null);
+    setShowSheetLink(false);
     
     try {
       const formattedData = {
@@ -87,6 +101,7 @@ const LeadForm: React.FC = () => {
           description: "Dados do lead enviados com sucesso para a planilha.",
         });
         setSubmitted(true);
+        setShowSheetLink(true);
         
         // Só limpar o formulário após envio bem-sucedido
         setTimeout(() => {
@@ -240,13 +255,37 @@ const LeadForm: React.FC = () => {
             />
           </div>
 
+          {showSheetLink && (
+            <div className="bg-green-50 border border-green-200 text-green-800 rounded-md p-4 flex items-start">
+              <Check className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Dados enviados com sucesso!</p>
+                <p className="text-sm">Os dados foram registrados na planilha.</p>
+                <button 
+                  type="button"
+                  onClick={openGoogleSheet}
+                  className="text-sm mt-2 flex items-center text-green-700 hover:text-green-900 font-medium"
+                >
+                  Ver na planilha <ExternalLink className="h-4 w-4 ml-1" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {submitError && (
             <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 flex items-start">
               <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-medium">Erro no envio</p>
                 <p className="text-sm">{submitError}</p>
-                <p className="text-sm mt-1">Seus dados não foram perdidos. Tente novamente ou verifique a alternativa via WhatsApp.</p>
+                <p className="text-sm mt-1">Seus dados não foram perdidos.</p>
+                <button 
+                  type="button"
+                  onClick={() => handleSendToWhatsApp(watch())}
+                  className="mt-2 text-sm text-red-700 hover:text-red-900 font-medium flex items-center"
+                >
+                  Enviar via WhatsApp <ExternalLink className="h-4 w-4 ml-1" />
+                </button>
               </div>
             </div>
           )}
