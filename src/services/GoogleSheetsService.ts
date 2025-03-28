@@ -151,7 +151,7 @@ function doPost(e) {
 //    f. Copie a URL do aplicativo da Web e substitua abaixo na const WEBHOOKURL
 
 // Coloque aqui a URL do seu webhook do Google Apps Script
-const WEBHOOK_URL = "https://script.google.com/macros/s/SUA_URL_AQUI/exec";
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzn0oGRz1xD2di7Q6DgW047sW8Cr49LUApET2w9yfUjCT9DsHSh2fOFffyRRuxRWTiPJg/exec";
 
 // Número do WhatsApp para fallback (com código do país)
 const WHATSAPP_FALLBACK_NUMBER = "558293460460";
@@ -238,7 +238,7 @@ export async function submitToGoogleSheets(data: any, webhookUrlParam?: string):
     // Usa o URL do parâmetro se fornecido, caso contrário usa o URL fixo
     const webhookUrl = webhookUrlParam || WEBHOOK_URL;
     
-    if (!webhookUrl || webhookUrl === "https://script.google.com/macros/s/SUA_URL_AQUI/exec") {
+    if (!webhookUrl || webhookUrl === "https://script.google.com/macros/s/AKfycbzn0oGRz1xD2di7Q6DgW047sW8Cr49LUApET2w9yfUjCT9DsHSh2fOFffyRRuxRWTiPJg/exec") {
       console.warn("URL do webhook não configurada ou usando valor padrão");
       console.log("Ativando fallback para WhatsApp");
       sendToWhatsAppFallback(data);
