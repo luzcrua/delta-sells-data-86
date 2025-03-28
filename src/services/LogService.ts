@@ -18,6 +18,9 @@ const COLORS = {
   reset: ''
 };
 
+// Flag para prevenir recursão infinita no monitoramento de CORS
+let isMonitoringCORS = false;
+
 export class LogService {
   static debug(message: string, data?: any): void {
     LogService.log('debug', message, data);
@@ -61,11 +64,15 @@ export class LogService {
       }
     }
     
-    // Monitorar problemas de CORS
-    if (message.includes('CORS') || (data && JSON.stringify(data).includes('CORS'))) {
-      LogService.warn('⚠️ Possível problema de CORS detectado! Verificando rede...');
-      
-      // Monitoramento adicional pode ser adicionado aqui
+    // Monitorar problemas de CORS sem causar recursão infinita
+    if (!isMonitoringCORS && (message.includes('CORS') || (data && JSON.stringify(data).includes('CORS')))) {
+      isMonitoringCORS = true;
+      try {
+        // Uma única mensagem de aviso sem criar loop
+        console.warn(`%c[${timestamp}] [WARN] ⚠️ Possível problema de CORS detectado!`, `color: ${COLORS.warn}; font-weight: bold`);
+      } finally {
+        isMonitoringCORS = false;
+      }
     }
   }
   
@@ -88,7 +95,8 @@ export class LogService {
           return response;
         })
         .catch(error => {
-          if (error.message.includes('CORS') || error.toString().includes('CORS')) {
+          // Verificar se é erro de CORS sem causar recursão
+          if (error.message && (error.message.includes('CORS') || error.toString().includes('CORS'))) {
             LogService.error(`🚫 Erro de CORS detectado: ${url}`, error);
             LogService.info('Tente usar um dos métodos alternativos de envio de dados.');
           } else {
