@@ -1,4 +1,3 @@
-
 // This file provides helpers for Google Sheets integration
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
@@ -12,53 +11,13 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    // Verifica se há dados no corpo da requisição
-    if (!e.postData || !e.postData.contents) {
-      return ContentService.createTextOutput(JSON.stringify({
-        result: "error",
-        message: "Dados não encontrados na requisição"
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
+    // Obter a planilha ativa
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("recebendoDadosDasVendas") || ss.insertSheet("recebendoDadosDasVendas");
     
-    // Analisa os dados recebidos
-    var data;
-    try {
-      data = JSON.parse(e.postData.contents);
-    } catch (parseError) {
-      return ContentService.createTextOutput(JSON.stringify({
-        result: "error",
-        message: "Falha ao processar os dados: " + parseError.toString()
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    // Valida os campos obrigatórios
-    var requiredFields = ["nome", "telefone", "genero", "linha", "tipo", "cor", "tamanho", 
-                         "valor", "formaPagamento", "frete", "dataPagamento", "dataEntrega", "valorTotal"];
-    
-    var missingFields = [];
-    for (var i = 0; i < requiredFields.length; i++) {
-      if (!data[requiredFields[i]]) {
-        missingFields.push(requiredFields[i]);
-      }
-    }
-    
-    if (missingFields.length > 0) {
-      return ContentService.createTextOutput(JSON.stringify({
-        result: "error",
-        message: "Campos obrigatórios ausentes: " + missingFields.join(", ")
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    // Obtém a planilha ativa
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("recebendoDadosDasVendas");
-    
-    if (!sheet) {
-      // Se a aba não existir, cria uma nova
-      sheet = ss.insertSheet("recebendoDadosDasVendas");
-      
-      // Adiciona cabeçalhos à nova aba
-      var headers = [
+    // Se a planilha foi recém-criada, adicione cabeçalhos
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
         "Timestamp",
         "Nome",
         "CPF",
@@ -66,7 +25,7 @@ function doPost(e) {
         "Gênero",
         "Linha",
         "Tipo",
-        "Cor",
+        "Cor", 
         "Tamanho",
         "Valor",
         "Forma de Pagamento",
@@ -76,66 +35,57 @@ function doPost(e) {
         "Data de Entrega",
         "Valor Total",
         "Observação"
-      ];
-      sheet.appendRow(headers);
+      ]);
       
-      // Formata os cabeçalhos
-      var headerRange = sheet.getRange(1, 1, 1, headers.length);
+      // Formatar cabeçalhos
+      const headerRange = sheet.getRange(1, 1, 1, 17);
       headerRange.setFontWeight("bold");
       headerRange.setBackground("#f3f3f3");
       sheet.setFrozenRows(1);
     }
     
-    // Sanitiza e prepara os dados para inserção
-    var sanitizeData = function(value) {
-      if (value === undefined || value === null) {
-        return "";
-      }
-      // Converte para string e remove caracteres potencialmente problemáticos
-      return String(value).replace(/[=+\-@]/g, function(match) {
-        return "'" + match;
-      });
+    // Obter dados do POST
+    const data = JSON.parse(e.postData.contents);
+    
+    // Sanitizar dados para evitar injeção de fórmulas
+    const sanitize = (value) => {
+      if (value === undefined || value === null) return "";
+      return String(value).replace(/^[=+\-@]/, "'$&");
     };
     
-    // Prepara a linha de dados para ser adicionada
-    var row = [
-      new Date(), // Timestamp
-      sanitizeData(data.nome),
-      sanitizeData(data.cpf || ""),
-      sanitizeData(data.telefone),
-      sanitizeData(data.genero),
-      sanitizeData(data.linha),
-      sanitizeData(data.tipo),
-      sanitizeData(data.cor),
-      sanitizeData(data.tamanho),
-      sanitizeData(data.valor),
-      sanitizeData(data.formaPagamento),
-      sanitizeData(data.localizacao || ""),
-      sanitizeData(data.frete),
-      sanitizeData(data.dataPagamento),
-      sanitizeData(data.dataEntrega),
-      sanitizeData(data.valorTotal),
-      sanitizeData(data.observacao || "")
-    ];
+    // Adicionar uma nova linha com os dados recebidos
+    sheet.appendRow([
+      new Date(), // Timestamp atual
+      sanitize(data.nome),
+      sanitize(data.cpf || ""),
+      sanitize(data.telefone),
+      sanitize(data.genero),
+      sanitize(data.linha),
+      sanitize(data.tipo),
+      sanitize(data.cor),
+      sanitize(data.tamanho),
+      sanitize(data.valor),
+      sanitize(data.formaPagamento),
+      sanitize(data.localizacao || ""),
+      sanitize(data.frete),
+      sanitize(data.dataPagamento),
+      sanitize(data.dataEntrega),
+      sanitize(data.valorTotal),
+      sanitize(data.observacao || "")
+    ]);
     
-    // Adiciona a linha à planilha
-    sheet.appendRow(row);
+    // Ajustar largura das colunas automaticamente
+    sheet.autoResizeColumns(1, 17);
     
-    // Formata automaticamente as colunas para melhor visualização
-    sheet.autoResizeColumns(1, row.length);
-    
-    // Retorna resposta de sucesso
+    // Retornar resposta de sucesso
     return ContentService.createTextOutput(JSON.stringify({
       result: "success",
-      message: "Dados registrados com sucesso na planilha!",
-      timestamp: new Date().toISOString()
+      message: "Dados registrados com sucesso!"
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
-    // Registra o erro completo nos logs do Apps Script
-    console.error("Erro ao processar a requisição: " + error.toString());
-    
-    // Retorna resposta de erro
+    // Registrar erro e retornar resposta de erro
+    console.error("Erro: " + error.toString());
     return ContentService.createTextOutput(JSON.stringify({
       result: "error",
       message: "Erro ao processar a requisição: " + error.toString()
