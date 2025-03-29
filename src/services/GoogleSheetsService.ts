@@ -1,6 +1,6 @@
 
 // This file provides helpers for Google Sheets integration
-import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY, SHEET_NAMES } from "../env";
+import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY, SHEET_NAMES, DEBUG_MODE } from "../env";
 import { LogService } from "@/services/LogService";
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
@@ -130,7 +130,18 @@ function sendWithForm(url: string, data: any): Promise<any> {
     const hiddenField = document.createElement('input');
     hiddenField.type = 'hidden';
     hiddenField.name = 'data';
-    hiddenField.value = JSON.stringify(data);
+    
+    // Garantir que os dados incluam o nome correto da planilha
+    const dataWithSheet = { ...data };
+    if (!dataWithSheet.sheetName) {
+      dataWithSheet.sheetName = data.formType === 'lead' ? SHEET_NAMES.LEAD : SHEET_NAMES.CLIENTE;
+    }
+    
+    hiddenField.value = JSON.stringify(dataWithSheet);
+    if (DEBUG_MODE) {
+      console.log('📤 Enviando dados para a planilha:', dataWithSheet);
+    }
+    
     form.appendChild(hiddenField);
     
     // Adicionar ao DOM e enviar
@@ -140,7 +151,7 @@ function sendWithForm(url: string, data: any): Promise<any> {
     const timeoutId = setTimeout(() => {
       cleanupResources();
       reject(new Error("Tempo esgotado ao tentar enviar dados"));
-    }, 60000); // 60 segundos
+    }, 90000); // 90 segundos (tempo maior para garantir processamento)
     
     // Função para limpar recursos
     const cleanupResources = () => {
@@ -163,6 +174,9 @@ function sendWithForm(url: string, data: any): Promise<any> {
         // Verificar se a mensagem veio do Google Apps Script
         if (event.origin.includes('script.google.com') || event.origin.includes('google.com')) {
           LogService.info("Recebida resposta do Google Apps Script via mensagem", event.data);
+          if (DEBUG_MODE) {
+            console.log('📩 Resposta recebida do Google Apps Script:', event.data);
+          }
           window.removeEventListener('message', messageHandler);
           cleanupResources();
           resolve({
@@ -189,6 +203,9 @@ function sendWithForm(url: string, data: any): Promise<any> {
             LogService.info("Conteúdo do iframe:", { responseText });
             
             if (responseText && (responseText.includes("success") || responseText.includes("sucesso"))) {
+              if (DEBUG_MODE) {
+                console.log('✅ Dados enviados com sucesso para a planilha!');
+              }
               cleanupResources();
               resolve({ result: "success", message: "Dados enviados com sucesso!" });
               return;
@@ -200,9 +217,12 @@ function sendWithForm(url: string, data: any): Promise<any> {
         
         // Se não conseguimos verificar o conteúdo, esperamos um pouco mais para mensagens
         setTimeout(() => {
+          if (DEBUG_MODE) {
+            console.log('⏱️ Timeout atingido, assumindo envio bem-sucedido...');
+          }
           cleanupResources();
           resolve({ result: "success", message: "Dados enviados com sucesso!" });
-        }, 2000); // Aumentamos o tempo para garantir que mensagens sejam processadas
+        }, 3000); // Aumentamos o tempo para garantir que mensagens sejam processadas
       } catch (e) {
         LogService.info("Erro ao processar resposta do iframe, assumindo sucesso", e);
         cleanupResources();
@@ -219,6 +239,9 @@ function sendWithForm(url: string, data: any): Promise<any> {
     
     try {
       LogService.info(`Enviando formulário ${formId} para ${url}`, {});
+      if (DEBUG_MODE) {
+        console.log(`🚀 Enviando formulário para ${url}...`);
+      }
       form.submit();
       LogService.info("Formulário enviado, aguardando resposta...", {});
     } catch (e) {
@@ -236,6 +259,9 @@ function sendWithForm(url: string, data: any): Promise<any> {
  */
 export async function submitToGoogleSheets(data: any): Promise<{ success: boolean; message: string; redirectToSheet?: boolean }> {
   LogService.info("Iniciando envio para Google Sheets", { formType: data.formType });
+  if (DEBUG_MODE) {
+    console.log('🔄 Iniciando envio para Google Sheets...', { formType: data.formType });
+  }
   
   try {
     // Obter a URL do Apps Script do env.ts
@@ -282,6 +308,9 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
       
       try {
         LogService.info(`Tentativa ${attempts}/${MAX_RETRIES} usando método de formulário`, {});
+        if (DEBUG_MODE) {
+          console.log(`🔄 Tentativa ${attempts}/${MAX_RETRIES} de envio...`);
+        }
         
         // Usar consistentemente o método de formulário, que é mais confiável
         result = await sendWithForm(webhookUrl, data);
@@ -289,6 +318,9 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
         
         if (result && (result.result === "success" || result.message?.includes("sucesso"))) {
           success = true;
+          if (DEBUG_MODE) {
+            console.log('✅ Tentativa bem-sucedida!');
+          }
         } else {
           throw new Error(result?.message || "Resposta não contém mensagem de sucesso");
         }
@@ -300,6 +332,9 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
         if (attempts < MAX_RETRIES) {
           const waitTime = RETRY_DELAY * attempts; // Aumenta o tempo de espera a cada tentativa
           LogService.info(`Aguardando ${waitTime}ms antes da próxima tentativa`, {});
+          if (DEBUG_MODE) {
+            console.log(`⏱️ Aguardando ${waitTime}ms antes da próxima tentativa...`);
+          }
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
@@ -307,6 +342,9 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     
     if (success && result) {
       LogService.info("Envio concluído com sucesso", {});
+      if (DEBUG_MODE) {
+        console.log('🎉 Envio concluído com sucesso para a planilha!');
+      }
       return { 
         success: true, 
         message: "Dados enviados com sucesso para a planilha!", 
@@ -317,6 +355,9 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     }
   } catch (error) {
     LogService.error("Erro final ao enviar para o Google Sheets", error);
+    if (DEBUG_MODE) {
+      console.error('❌ Erro final ao enviar para o Google Sheets:', error);
+    }
     
     return { 
       success: false, 

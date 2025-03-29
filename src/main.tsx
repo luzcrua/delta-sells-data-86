@@ -5,12 +5,17 @@ import App from './App'
 import './index.css'
 import { Toaster } from "@/components/ui/toaster"
 import { LogService } from './services/LogService'
+import { DEBUG_MODE } from './env'
 
 // Adicionar um listener para mensagens que podem vir do Google Apps Script
 window.addEventListener('message', function(event) {
   // Verificar se a origem é confiável (Google Scripts)
   if (event.origin.includes('script.google.com') || event.origin.includes('google.com')) {
     LogService.info('Mensagem recebida do Google Apps Script:', event.data);
+    
+    if (DEBUG_MODE) {
+      console.log('📨 Mensagem recebida do Google Apps Script:', event.data);
+    }
     
     try {
       // Tentar analisar a resposta, se for uma string JSON
@@ -49,3 +54,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 LogService.info('📊 DELTA SELLS CLIENTS - Interface renderizada', {});
+
+// Mensagem adicional sobre o envio de dados
+if (DEBUG_MODE) {
+  console.log('%c 📝 Sistema pronto para enviar dados para a planilha.', 'color: #2196F3; font-weight: bold');
+  console.log('%c ℹ️ Verifique se a URL do Apps Script em env.ts está correta.', 'color: #2196F3;');
+}
