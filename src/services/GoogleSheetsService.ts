@@ -158,7 +158,7 @@ function sendWithForm(url: string, data: any): Promise<any> {
     };
     
     // Ouvir mensagens do iframe
-    window.addEventListener('message', function messageHandler(event) {
+    const messageHandler = function(event: MessageEvent) {
       try {
         // Verificar se a mensagem veio do Google Apps Script
         if (event.origin.includes('script.google.com') || event.origin.includes('google.com')) {
@@ -173,19 +173,38 @@ function sendWithForm(url: string, data: any): Promise<any> {
       } catch (e) {
         LogService.error("Erro ao processar mensagem do iframe", e);
       }
-    }, false);
+    };
+    
+    window.addEventListener('message', messageHandler, false);
     
     // Ouvir resposta do iframe via load
     iframe.onload = () => {
       try {
-        LogService.info("Iframe carregado, assumindo envio bem-sucedido", {});
+        LogService.info("Iframe carregado, verificando resposta...", {});
         // Tentamos acessar o conteúdo do iframe (pode falhar devido a CORS)
+        try {
+          const iframeContent = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeContent) {
+            const responseText = iframeContent.body.innerText || iframeContent.body.textContent;
+            LogService.info("Conteúdo do iframe:", { responseText });
+            
+            if (responseText && (responseText.includes("success") || responseText.includes("sucesso"))) {
+              cleanupResources();
+              resolve({ result: "success", message: "Dados enviados com sucesso!" });
+              return;
+            }
+          }
+        } catch (e) {
+          LogService.info("Não foi possível acessar conteúdo do iframe devido a restrições de CORS", e);
+        }
+        
+        // Se não conseguimos verificar o conteúdo, esperamos um pouco mais para mensagens
         setTimeout(() => {
           cleanupResources();
           resolve({ result: "success", message: "Dados enviados com sucesso!" });
-        }, 1000); // Damos tempo para mensagens serem processadas
+        }, 2000); // Aumentamos o tempo para garantir que mensagens sejam processadas
       } catch (e) {
-        LogService.info("Não foi possível acessar resposta do iframe, assumindo sucesso", {});
+        LogService.info("Erro ao processar resposta do iframe, assumindo sucesso", e);
         cleanupResources();
         resolve({ result: "success", message: "Dados parecem ter sido enviados com sucesso!" });
       }
@@ -193,7 +212,7 @@ function sendWithForm(url: string, data: any): Promise<any> {
     
     iframe.onerror = (error) => {
       LogService.error("Erro no iframe ao enviar formulário", error);
-      window.removeEventListener('message', () => {});
+      window.removeEventListener('message', messageHandler);
       cleanupResources();
       reject(new Error("Erro ao enviar dados"));
     };
@@ -201,10 +220,10 @@ function sendWithForm(url: string, data: any): Promise<any> {
     try {
       LogService.info(`Enviando formulário ${formId} para ${url}`, {});
       form.submit();
-      LogService.info("Formulário enviado", {});
+      LogService.info("Formulário enviado, aguardando resposta...", {});
     } catch (e) {
       LogService.error("Erro ao enviar formulário", e);
-      window.removeEventListener('message', () => {});
+      window.removeEventListener('message', messageHandler);
       cleanupResources();
       reject(e);
     }

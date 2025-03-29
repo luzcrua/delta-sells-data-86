@@ -17,9 +17,20 @@ window.addEventListener('message', function(event) {
       if (typeof event.data === 'string') {
         const data = JSON.parse(event.data);
         LogService.info('Dados processados da mensagem:', data);
+        
+        // Se recebemos uma confirmação de sucesso, podemos notificar o usuário
+        if (data.result === 'success' || data.success === true) {
+          console.log('%c ✅ Dados salvos com sucesso na planilha!', 'color: #4CAF50; font-weight: bold');
+        }
       }
     } catch (error) {
       LogService.info('Recebida mensagem não-JSON do iframe:', event.data);
+      
+      // Se a mensagem contém 'success' ou 'sucesso', consideramos que o envio foi bem-sucedido
+      if (typeof event.data === 'string' && 
+          (event.data.includes('success') || event.data.includes('sucesso'))) {
+        console.log('%c ✅ Dados salvos com sucesso na planilha!', 'color: #4CAF50; font-weight: bold');
+      }
     }
   }
 });

@@ -10,8 +10,8 @@ export const LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error' = 'debug';
 
 // Configurações adicionais para contornar problemas de CORS
 export const USE_FORM_FALLBACK: boolean = true; // Usar método de formulário em vez de fetch
-export const MAX_RETRIES: number = 5; // Número máximo de tentativas aumentado
-export const RETRY_DELAY: number = 1500; // Tempo entre tentativas (ms) aumentado
+export const MAX_RETRIES: number = 7; // Número máximo de tentativas aumentado
+export const RETRY_DELAY: number = 2000; // Tempo entre tentativas (ms) aumentado
 
 // Configurações para as abas da planilha
 export const SHEET_NAMES = {
