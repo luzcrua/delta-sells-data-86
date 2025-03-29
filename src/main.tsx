@@ -6,6 +6,7 @@ import './index.css'
 import { Toaster } from "@/components/ui/toaster"
 import { LogService } from './services/LogService'
 import { DEBUG_MODE } from './env'
+import { toast } from "@/components/ui/use-toast"
 
 // Adicionar um listener para mensagens que podem vir do Google Apps Script
 window.addEventListener('message', function(event) {
@@ -26,15 +27,73 @@ window.addEventListener('message', function(event) {
         // Se recebemos uma confirmação de sucesso, podemos notificar o usuário
         if (data.result === 'success' || data.success === true) {
           console.log('%c ✅ Dados salvos com sucesso na planilha!', 'color: #4CAF50; font-weight: bold');
+          
+          // Exibir toast de sucesso para o usuário
+          toast({
+            title: "Sucesso!",
+            description: "Dados salvos com sucesso na planilha!",
+            variant: "default",
+          });
+        } else if (data.result === 'error' || data.success === false) {
+          console.error('%c ❌ Erro ao salvar dados na planilha!', 'color: #F44336; font-weight: bold');
+          console.error('Erro:', data.message || data.error || 'Erro desconhecido');
+          
+          // Exibir toast de erro para o usuário
+          toast({
+            title: "Erro!",
+            description: data.message || data.error || "Erro ao salvar dados na planilha!",
+            variant: "destructive",
+          });
+        }
+      } else if (typeof event.data === 'object' && event.data !== null) {
+        // Se já for um objeto
+        LogService.info('Objeto recebido do Google Apps Script:', event.data);
+        
+        if (event.data.result === 'success' || event.data.success === true) {
+          console.log('%c ✅ Dados salvos com sucesso na planilha!', 'color: #4CAF50; font-weight: bold');
+          
+          // Exibir toast de sucesso para o usuário
+          toast({
+            title: "Sucesso!",
+            description: "Dados salvos com sucesso na planilha!",
+            variant: "default",
+          });
+        } else if (event.data.result === 'error' || event.data.success === false) {
+          console.error('%c ❌ Erro ao salvar dados na planilha!', 'color: #F44336; font-weight: bold');
+          console.error('Erro:', event.data.message || event.data.error || 'Erro desconhecido');
+          
+          // Exibir toast de erro para o usuário
+          toast({
+            title: "Erro!",
+            description: event.data.message || event.data.error || "Erro ao salvar dados na planilha!",
+            variant: "destructive",
+          });
         }
       }
     } catch (error) {
       LogService.info('Recebida mensagem não-JSON do iframe:', event.data);
       
       // Se a mensagem contém 'success' ou 'sucesso', consideramos que o envio foi bem-sucedido
-      if (typeof event.data === 'string' && 
-          (event.data.includes('success') || event.data.includes('sucesso'))) {
-        console.log('%c ✅ Dados salvos com sucesso na planilha!', 'color: #4CAF50; font-weight: bold');
+      if (typeof event.data === 'string') {
+        if (event.data.includes('success') || event.data.includes('sucesso')) {
+          console.log('%c ✅ Dados salvos com sucesso na planilha!', 'color: #4CAF50; font-weight: bold');
+          
+          // Exibir toast de sucesso para o usuário
+          toast({
+            title: "Sucesso!",
+            description: "Dados salvos com sucesso na planilha!",
+            variant: "default",
+          });
+        } else if (event.data.includes('error') || event.data.includes('erro')) {
+          console.error('%c ❌ Erro ao salvar dados na planilha!', 'color: #F44336; font-weight: bold');
+          
+          // Exibir toast de erro para o usuário
+          toast({
+            title: "Erro!",
+            description: "Erro ao salvar dados na planilha!",
+            variant: "destructive",
+          });
+        }
       }
     }
   }

@@ -1,6 +1,5 @@
-
 // This file provides helpers for Google Sheets integration
-import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY, SHEET_NAMES, DEBUG_MODE } from "../env";
+import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY, SHEET_NAMES, DEBUG_MODE, SHEET_COLUMNS } from "../env";
 import { LogService } from "@/services/LogService";
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
@@ -100,6 +99,26 @@ export function sendToWhatsAppFallback(data: any): void {
 }
 
 /**
+ * Verifica se os dados incluem todos os campos esperados
+ */
+function validateData(data: any): boolean {
+  const sheetType = data.formType === 'lead' ? 'LEAD' : 'CLIENTE';
+  const expectedColumns = SHEET_COLUMNS[sheetType];
+  
+  // Verificar se todos os campos necessários estão presentes
+  const missingFields = expectedColumns.filter(column => 
+    data[column] === undefined || data[column] === null
+  );
+  
+  if (missingFields.length > 0) {
+    LogService.warn(`Dados incompletos: faltando campos [${missingFields.join(', ')}]`, data);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
  * Método alternativo que envia dados usando um formulário temporário
  * Isso contorna problemas de CORS para métodos POST
  */
@@ -107,6 +126,11 @@ function sendWithForm(url: string, data: any): Promise<any> {
   LogService.info("Tentando envio com técnica de formulário", { url });
   
   return new Promise((resolve, reject) => {
+    // Verificar dados antes de enviar
+    if (!validateData(data)) {
+      LogService.warn("Dados inválidos ou incompletos para envio", data);
+    }
+    
     // Criar um identificador único para este envio
     const formId = `form-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const iframeId = `iframe-${formId}`;
@@ -137,6 +161,9 @@ function sendWithForm(url: string, data: any): Promise<any> {
       dataWithSheet.sheetName = data.formType === 'lead' ? SHEET_NAMES.LEAD : SHEET_NAMES.CLIENTE;
     }
     
+    // Adicionar timestamp para identificar os dados
+    dataWithSheet.timestamp = new Date().toISOString();
+    
     hiddenField.value = JSON.stringify(dataWithSheet);
     if (DEBUG_MODE) {
       console.log('📤 Enviando dados para a planilha:', dataWithSheet);
@@ -149,6 +176,7 @@ function sendWithForm(url: string, data: any): Promise<any> {
     
     // Definir timeout
     const timeoutId = setTimeout(() => {
+      LogService.warn("Tempo esgotado ao tentar enviar dados", { formId });
       cleanupResources();
       reject(new Error("Tempo esgotado ao tentar enviar dados"));
     }, 90000); // 90 segundos (tempo maior para garantir processamento)
@@ -177,12 +205,42 @@ function sendWithForm(url: string, data: any): Promise<any> {
           if (DEBUG_MODE) {
             console.log('📩 Resposta recebida do Google Apps Script:', event.data);
           }
+          
+          // Verificar se a resposta indica sucesso
+          let isSuccess = false;
+          
+          // Se a resposta é um objeto
+          if (typeof event.data === 'object' && event.data !== null) {
+            isSuccess = event.data.success === true || event.data.result === 'success';
+          } 
+          // Se a resposta é uma string
+          else if (typeof event.data === 'string') {
+            isSuccess = event.data.includes('success') || event.data.includes('sucesso');
+            
+            // Tentar parse JSON se for uma string JSON
+            try {
+              const parsedData = JSON.parse(event.data);
+              isSuccess = parsedData.success === true || parsedData.result === 'success';
+            } catch (e) {
+              // Não é JSON, continua usando o resultado da verificação de string
+            }
+          }
+          
           window.removeEventListener('message', messageHandler);
           cleanupResources();
-          resolve({
-            result: "success",
-            message: "Dados enviados com sucesso!"
-          });
+          
+          if (isSuccess) {
+            if (DEBUG_MODE) {
+              console.log('✅ Dados enviados com sucesso para a planilha!');
+            }
+            resolve({
+              result: "success",
+              message: "Dados enviados com sucesso!"
+            });
+          } else {
+            LogService.warn("Resposta do Google Apps Script não indica sucesso", event.data);
+            reject(new Error("Resposta do servidor não indica sucesso"));
+          }
         }
       } catch (e) {
         LogService.error("Erro ao processar mensagem do iframe", e);
@@ -207,8 +265,11 @@ function sendWithForm(url: string, data: any): Promise<any> {
                 console.log('✅ Dados enviados com sucesso para a planilha!');
               }
               cleanupResources();
+              window.removeEventListener('message', messageHandler);
               resolve({ result: "success", message: "Dados enviados com sucesso!" });
               return;
+            } else if (responseText) {
+              LogService.warn("Conteúdo do iframe não indica sucesso", { responseText });
             }
           }
         } catch (e) {
@@ -221,11 +282,13 @@ function sendWithForm(url: string, data: any): Promise<any> {
             console.log('⏱️ Timeout atingido, assumindo envio bem-sucedido...');
           }
           cleanupResources();
+          window.removeEventListener('message', messageHandler);
           resolve({ result: "success", message: "Dados enviados com sucesso!" });
         }, 3000); // Aumentamos o tempo para garantir que mensagens sejam processadas
       } catch (e) {
         LogService.info("Erro ao processar resposta do iframe, assumindo sucesso", e);
         cleanupResources();
+        window.removeEventListener('message', messageHandler);
         resolve({ result: "success", message: "Dados parecem ter sido enviados com sucesso!" });
       }
     };
@@ -290,9 +353,21 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     if (data.formType === 'lead') {
       LogService.info("Preparando dados para a planilha de leads", { sheetName: SHEET_NAMES.LEAD });
       data.sheetName = SHEET_NAMES.LEAD; // Adicionar nome da planilha aos dados
+      
+      // Verificar se os dados estão completos antes de enviar
+      const hasAllFields = validateData(data);
+      if (!hasAllFields) {
+        LogService.warn("Dados de lead incompletos para envio", data);
+      }
     } else {
       LogService.info("Preparando dados para a planilha de clientes", { sheetName: SHEET_NAMES.CLIENTE });
       data.sheetName = SHEET_NAMES.CLIENTE; // Adicionar nome da planilha aos dados
+      
+      // Verificar se os dados estão completos antes de enviar
+      const hasAllFields = validateData(data);
+      if (!hasAllFields) {
+        LogService.warn("Dados de cliente incompletos para envio", data);
+      }
     }
     
     LogService.info(`Tentando enviar dados para Google Sheets: ${webhookUrl}`, {});

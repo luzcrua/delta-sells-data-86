@@ -10,8 +10,8 @@ export const LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error' = 'debug';
 
 // Configurações adicionais para contornar problemas de CORS
 export const USE_FORM_FALLBACK: boolean = true; // Usar método de formulário em vez de fetch
-export const MAX_RETRIES: number = 10; // Número máximo de tentativas aumentado
-export const RETRY_DELAY: number = 1500; // Tempo entre tentativas (ms)
+export const MAX_RETRIES: number = 20; // Número máximo de tentativas aumentado para 20
+export const RETRY_DELAY: number = 1000; // Tempo entre tentativas (ms) reduzido para tentar mais rápido
 
 // Configurações para as abas da planilha
 export const SHEET_NAMES = {
@@ -21,3 +21,12 @@ export const SHEET_NAMES = {
 
 // Defina como true para usar depuração extendida
 export const DEBUG_MODE: boolean = true;
+
+// Nome das colunas esperadas na planilha (usado para debug)
+export const SHEET_COLUMNS = {
+  CLIENTE: ["nome", "cpf", "telefone", "genero", "linha", "tipo", "cor", "tamanho", 
+    "valor", "formaPagamento", "localizacao", "frete", "dataPagamento", "dataEntrega", 
+    "valorTotal", "observacao"],
+  LEAD: ["nome", "telefone", "instagram", "interesse", "statusLead", "dataLembrete", 
+    "motivoLembrete", "observacoes"]
+};
