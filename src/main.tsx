@@ -18,12 +18,23 @@ window.addEventListener('error', (event) => {
   });
 });
 
-// Escutar mensagens de sucesso do Google Sheets
+// Escutar mensagens do Google Sheets
 window.addEventListener('message', (event) => {
   // Verificar se a mensagem veio do Google Apps Script
   if (event.origin.includes('script.google.com')) {
     try {
       LogService.info('Mensagem recebida do Google Apps Script:', event.data);
+      
+      // Tentar processar a resposta como JSON se for string
+      if (typeof event.data === 'string') {
+        try {
+          const jsonData = JSON.parse(event.data);
+          LogService.info('Dados JSON processados:', jsonData);
+        } catch (e) {
+          // Se não for JSON, apenas registra a string
+          LogService.info('Conteúdo da mensagem (não-JSON):', event.data);
+        }
+      }
     } catch (error) {
       LogService.error('Erro ao processar mensagem do Google Apps Script:', error);
     }
