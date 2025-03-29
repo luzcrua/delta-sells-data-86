@@ -1,3 +1,6 @@
+# Ignorar o arquivo de variáveis de ambiente
+src/env.ts
+
 # Logs
 logs
 *.log
