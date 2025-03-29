@@ -1,5 +1,5 @@
 // This file provides helpers for Google Sheets integration
-import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY } from "./src/env.ts";
+import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY } from "src/env.ts";
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
 // 1. Abra sua planilha do Google: https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit
