@@ -1,6 +1,6 @@
 
 // This file provides helpers for Google Sheets integration
-import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY, SHEET_NAMES } from "../env.ts";
+import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY, SHEET_NAMES } from "./env";
 import { LogService } from "@/services/LogService";
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
