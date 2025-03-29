@@ -1,3 +1,4 @@
+
 // This file provides helpers for Google Sheets integration
 import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY, SHEET_NAMES } from "@/env";
 import { LogService } from "@/services/LogService";
@@ -84,17 +85,17 @@ function formatDataForWhatsApp(data: any): string {
  * Envia dados para o WhatsApp como fallback
  */
 export function sendToWhatsAppFallback(data: any): void {
-  LogService.log("Iniciando fallback para WhatsApp", data);
+  LogService.info("Iniciando fallback para WhatsApp", data);
   const formattedMessage = formatDataForWhatsApp(data);
   const whatsappUrl = `https://wa.me/${WHATSAPP_FALLBACK_NUMBER}?text=${formattedMessage}`;
   
   const confirmMessage = "Não foi possível enviar os dados para a planilha. Deseja enviar via WhatsApp?";
   
   if (window.confirm(confirmMessage)) {
-    LogService.log("Abrindo WhatsApp como fallback");
+    LogService.info("Abrindo WhatsApp como fallback");
     window.open(whatsappUrl, '_blank');
   } else {
-    LogService.log("Usuário cancelou o envio para WhatsApp");
+    LogService.info("Usuário cancelou o envio para WhatsApp");
   }
 }
 
@@ -184,7 +185,7 @@ function sendWithForm(url: string, data: any): Promise<any> {
           resolve({ result: "success", message: "Dados enviados com sucesso!" });
         }, 1000); // Damos tempo para mensagens serem processadas
       } catch (e) {
-        LogService.log("Não foi possível acessar resposta do iframe, assumindo sucesso");
+        LogService.info("Não foi possível acessar resposta do iframe, assumindo sucesso");
         cleanupResources();
         resolve({ result: "success", message: "Dados parecem ter sido enviados com sucesso!" });
       }
@@ -247,7 +248,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
       LogService.info("Preparando dados para a planilha de clientes", { sheetName: SHEET_NAMES.CLIENTE });
     }
     
-    LogService.log(`Tentando enviar dados para Google Sheets: ${webhookUrl}`);
+    LogService.info(`Tentando enviar dados para Google Sheets: ${webhookUrl}`);
     
     // Com base nas configurações, escolher o método de envio
     let result;
@@ -277,7 +278,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
         // Se não for a última tentativa, esperar antes de tentar novamente
         if (attempts < MAX_RETRIES) {
           const waitTime = RETRY_DELAY * attempts; // Aumenta o tempo de espera a cada tentativa
-          LogService.log(`Aguardando ${waitTime}ms antes da próxima tentativa`);
+          LogService.info(`Aguardando ${waitTime}ms antes da próxima tentativa`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
