@@ -1,12 +1,9 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App'
 import './index.css'
 import { Toaster } from "@/components/ui/toaster"
-import Index from './pages/Index'
-import NotFound from './pages/NotFound'
 import { LogService } from './services/LogService'
 
 // Adicionar um listener para mensagens que podem vir do Google Apps Script
@@ -35,14 +32,7 @@ LogService.info('📊 DELTA SELLS CLIENTS - Aplicação iniciando...', {});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />}>
-          <Route index element={<Index />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <App />
     <Toaster />
   </React.StrictMode>,
 )
