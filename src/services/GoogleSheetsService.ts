@@ -92,10 +92,10 @@ export function sendToWhatsAppFallback(data: any): void {
   const confirmMessage = "Não foi possível enviar os dados para a planilha. Deseja enviar via WhatsApp?";
   
   if (window.confirm(confirmMessage)) {
-    LogService.info("Abrindo WhatsApp como fallback");
+    LogService.info("Abrindo WhatsApp como fallback", {});
     window.open(whatsappUrl, '_blank');
   } else {
-    LogService.info("Usuário cancelou o envio para WhatsApp");
+    LogService.info("Usuário cancelou o envio para WhatsApp", {});
   }
 }
 
@@ -157,11 +157,11 @@ function sendWithForm(url: string, data: any): Promise<any> {
       }
     };
     
-    // Ouvir mensagens do iframe (nova abordagem)
+    // Ouvir mensagens do iframe
     window.addEventListener('message', function messageHandler(event) {
       try {
         // Verificar se a mensagem veio do Google Apps Script
-        if (event.origin.includes('script.google.com')) {
+        if (event.origin.includes('script.google.com') || event.origin.includes('google.com')) {
           LogService.info("Recebida resposta do Google Apps Script via mensagem", event.data);
           window.removeEventListener('message', messageHandler);
           cleanupResources();
@@ -178,14 +178,14 @@ function sendWithForm(url: string, data: any): Promise<any> {
     // Ouvir resposta do iframe via load
     iframe.onload = () => {
       try {
-        LogService.info("Iframe carregado, assumindo envio bem-sucedido");
+        LogService.info("Iframe carregado, assumindo envio bem-sucedido", {});
         // Tentamos acessar o conteúdo do iframe (pode falhar devido a CORS)
         setTimeout(() => {
           cleanupResources();
           resolve({ result: "success", message: "Dados enviados com sucesso!" });
         }, 1000); // Damos tempo para mensagens serem processadas
       } catch (e) {
-        LogService.info("Não foi possível acessar resposta do iframe, assumindo sucesso");
+        LogService.info("Não foi possível acessar resposta do iframe, assumindo sucesso", {});
         cleanupResources();
         resolve({ result: "success", message: "Dados parecem ter sido enviados com sucesso!" });
       }
@@ -199,9 +199,9 @@ function sendWithForm(url: string, data: any): Promise<any> {
     };
     
     try {
-      LogService.info(`Enviando formulário ${formId} para ${url}`);
+      LogService.info(`Enviando formulário ${formId} para ${url}`, {});
       form.submit();
-      LogService.info("Formulário enviado");
+      LogService.info("Formulário enviado", {});
     } catch (e) {
       LogService.error("Erro ao enviar formulário", e);
       window.removeEventListener('message', () => {});
@@ -223,7 +223,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     const webhookUrl = GOOGLE_SHEETS_URL;
     
     if (!webhookUrl || typeof webhookUrl !== 'string') {
-      LogService.error("URL do Apps Script não configurada em env.ts");
+      LogService.error("URL do Apps Script não configurada em env.ts", {});
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
@@ -233,7 +233,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     
     // Verifica se a URL parece válida
     if (!webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
-      LogService.error("URL do Apps Script inválida");
+      LogService.error("URL do Apps Script inválida", {});
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
@@ -244,11 +244,13 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
     // Garantir que estamos usando os nomes de planilha corretos
     if (data.formType === 'lead') {
       LogService.info("Preparando dados para a planilha de leads", { sheetName: SHEET_NAMES.LEAD });
+      data.sheetName = SHEET_NAMES.LEAD; // Adicionar nome da planilha aos dados
     } else {
       LogService.info("Preparando dados para a planilha de clientes", { sheetName: SHEET_NAMES.CLIENTE });
+      data.sheetName = SHEET_NAMES.CLIENTE; // Adicionar nome da planilha aos dados
     }
     
-    LogService.info(`Tentando enviar dados para Google Sheets: ${webhookUrl}`);
+    LogService.info(`Tentando enviar dados para Google Sheets: ${webhookUrl}`, {});
     
     // Com base nas configurações, escolher o método de envio
     let result;
@@ -260,7 +262,7 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
       attempts++;
       
       try {
-        LogService.info(`Tentativa ${attempts}/${MAX_RETRIES} usando método de formulário`);
+        LogService.info(`Tentativa ${attempts}/${MAX_RETRIES} usando método de formulário`, {});
         
         // Usar consistentemente o método de formulário, que é mais confiável
         result = await sendWithForm(webhookUrl, data);
@@ -278,14 +280,14 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
         // Se não for a última tentativa, esperar antes de tentar novamente
         if (attempts < MAX_RETRIES) {
           const waitTime = RETRY_DELAY * attempts; // Aumenta o tempo de espera a cada tentativa
-          LogService.info(`Aguardando ${waitTime}ms antes da próxima tentativa`);
+          LogService.info(`Aguardando ${waitTime}ms antes da próxima tentativa`, {});
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
     }
     
     if (success && result) {
-      LogService.info("Envio concluído com sucesso");
+      LogService.info("Envio concluído com sucesso", {});
       return { 
         success: true, 
         message: "Dados enviados com sucesso para a planilha!", 

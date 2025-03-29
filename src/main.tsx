@@ -1,48 +1,50 @@
 
-import { createRoot } from 'react-dom/client'
-import App from './App.tsx'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import App from './App'
 import './index.css'
-import { LogService } from './services/LogService.ts'
+import { Toaster } from "@/components/ui/toaster"
+import Index from './pages/Index'
+import NotFound from './pages/NotFound'
+import { LogService } from './services/LogService'
 
-// Inicializar serviço de log
-LogService.info('📊 DELTA SELLS CLIENTS - Aplicação iniciando...');
-
-// Monitorar erros não tratados
-window.addEventListener('error', (event) => {
-  LogService.error('Erro não tratado:', {
-    message: event.message,
-    source: event.filename,
-    lineNo: event.lineno,
-    colNo: event.colno,
-    error: event.error
-  });
-});
-
-// Escutar mensagens do Google Sheets
-window.addEventListener('message', (event) => {
-  // Verificar se a mensagem veio do Google Apps Script
-  if (event.origin.includes('script.google.com')) {
+// Adicionar um listener para mensagens que podem vir do Google Apps Script
+window.addEventListener('message', function(event) {
+  // Verificar se a origem é confiável (Google Scripts)
+  if (event.origin.includes('script.google.com') || event.origin.includes('google.com')) {
+    LogService.info('Mensagem recebida do Google Apps Script:', event.data);
+    
     try {
-      LogService.info('Mensagem recebida do Google Apps Script:', event.data);
-      
-      // Tentar processar a resposta como JSON se for string
+      // Tentar analisar a resposta, se for uma string JSON
       if (typeof event.data === 'string') {
-        try {
-          const jsonData = JSON.parse(event.data);
-          LogService.info('Dados JSON processados:', jsonData);
-        } catch (e) {
-          // Se não for JSON, apenas registra a string
-          LogService.info('Conteúdo da mensagem (não-JSON):', event.data);
-        }
+        const data = JSON.parse(event.data);
+        LogService.info('Dados processados da mensagem:', data);
       }
     } catch (error) {
-      LogService.error('Erro ao processar mensagem do Google Apps Script:', error);
+      LogService.info('Recebida mensagem não-JSON do iframe:', event.data);
     }
   }
 });
 
-// Inicializar aplicação
-const root = createRoot(document.getElementById("root")!);
-root.render(<App />);
+// Configurar monitoramento de CORS
+LogService.monitorCORSErrors();
 
-LogService.info('📊 DELTA SELLS CLIENTS - Interface renderizada');
+// Inicializar mensagem de log
+LogService.info('📊 DELTA SELLS CLIENTS - Aplicação iniciando...', {});
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<App />}>
+          <Route index element={<Index />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+    <Toaster />
+  </React.StrictMode>,
+)
+
+LogService.info('📊 DELTA SELLS CLIENTS - Interface renderizada', {});
