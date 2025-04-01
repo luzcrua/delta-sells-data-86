@@ -29,6 +29,8 @@ const CustomerForm = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [valorNumerico, setValorNumerico] = useState(0);
   const [freteNumerico, setFreteNumerico] = useState(15);
+  const [customCupom, setCustomCupom] = useState("");
+  const [mostraParcelamento, setMostraParcelamento] = useState(false);
   const [isConfigured, setIsConfigured] = useState(false);
   const [showSheetLink, setShowSheetLink] = useState(false);
   
@@ -59,6 +61,8 @@ const CustomerForm = () => {
       tamanho: "",
       valor: "",
       formaPagamento: "PIX",
+      parcelamento: "",
+      cupom: "",
       localizacao: "",
       frete: "15,00",
       dataPagamento: undefined,
@@ -68,21 +72,59 @@ const CustomerForm = () => {
     },
   });
 
+  const formaPagamento = watch("formaPagamento");
+  const cupom = watch("cupom");
   const valor = watch("valor");
   const frete = watch("frete");
   
+  // Atualiza o mostrar parcelamento quando a forma de pagamento mudar
   useEffect(() => {
+    setMostraParcelamento(formaPagamento === "Crédito");
+  }, [formaPagamento]);
+  
+  // Calcula o valor total com base no valor, frete e cupom de desconto
+  useEffect(() => {
+    // Parseia o valor e o frete
     const parsedValor = parseFloat(valor.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
     const parsedFrete = parseFloat(frete.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
     
     setValorNumerico(parsedValor);
     setFreteNumerico(parsedFrete);
     
-    const total = parsedValor + parsedFrete;
+    // Aplica o desconto se houver cupom
+    let descontoPercentual = 0;
+    
+    if (cupom === "5% OFF") {
+      descontoPercentual = 5;
+    } else if (cupom === "10% OFF") {
+      descontoPercentual = 10;
+    } else if (cupom === "15% OFF") {
+      descontoPercentual = 15;
+    } else if (cupom === "Personalizado" && customCupom) {
+      // Tenta extrair o percentual do campo personalizado
+      const percentMatch = customCupom.match(/(\d+)/);
+      if (percentMatch) {
+        descontoPercentual = parseInt(percentMatch[0]);
+      }
+    }
+    
+    // Calcula o valor com desconto
+    const desconto = parsedValor * (descontoPercentual / 100);
+    const valorComDesconto = parsedValor - desconto;
+    
+    // Calcula o total (valor com desconto + frete)
+    const total = valorComDesconto + parsedFrete;
+    
     setValue("valorTotal", formatCurrency(String(total * 100)));
     
-    LogService.debug("Valores atualizados", { parsedValor, parsedFrete, total });
-  }, [valor, frete, setValue]);
+    LogService.debug("Valores atualizados", { 
+      parsedValor, 
+      parsedFrete, 
+      descontoPercentual, 
+      valorComDesconto, 
+      total 
+    });
+  }, [valor, frete, cupom, customCupom, setValue]);
 
   const handleInputChange = (field: keyof FormValues) => (e: ChangeEvent<HTMLInputElement>) => {
     setValue(field, e.target.value);
@@ -90,6 +132,22 @@ const CustomerForm = () => {
 
   const handleSelectChange = (field: keyof FormValues) => (value: string) => {
     setValue(field, value);
+    
+    // Se o campo for cupom e o valor for "Personalizado", limpar o valor personalizado
+    if (field === "cupom" && value !== "Personalizado") {
+      setCustomCupom("");
+    }
+  };
+
+  const handleCustomCupomChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setCustomCupom(e.target.value);
+    
+    // Atualizar o valor do cupom no formulário
+    if (e.target.value) {
+      setValue("cupom", "Personalizado");
+    } else {
+      setValue("cupom", "");
+    }
   };
 
   const handleTextareaChange = (field: keyof FormValues) => (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -124,6 +182,7 @@ const CustomerForm = () => {
     try {
       const formattedData = {
         ...data,
+        cupom: data.cupom === "Personalizado" ? customCupom : data.cupom,
         dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
         dataEntrega: data.dataEntrega ? format(data.dataEntrega, "dd/MM/yy") : "",
         formType: 'cliente', // Identificador para saber que é um formulário de cliente
@@ -371,16 +430,88 @@ const CustomerForm = () => {
                 error={errors.formaPagamento?.message}
                 required
               />
-              <FormInput
-                id="localizacao"
-                label="Localização"
-                value={watch("localizacao") || ""}
-                onChange={handleInputChange("localizacao")}
-                placeholder="Digite a localização de entrega"
-                error={errors.localizacao?.message}
-              />
+              
+              {mostraParcelamento && (
+                <FormSelect
+                  id="parcelamento"
+                  label="Parcelamento"
+                  value={watch("parcelamento") || ""}
+                  onChange={handleSelectChange("parcelamento")}
+                  options={[
+                    { value: "", label: "Selecione" },
+                    { value: "1x sem juros", label: "1x sem juros" },
+                    { value: "2x sem juros", label: "2x sem juros" },
+                    { value: "3x sem juros", label: "3x sem juros" },
+                    { value: "4x com juros", label: "4x com juros" },
+                    { value: "5x com juros", label: "5x com juros" },
+                    { value: "6x com juros", label: "6x com juros" },
+                    { value: "7x com juros", label: "7x com juros" },
+                    { value: "8x com juros", label: "8x com juros" },
+                    { value: "9x com juros", label: "9x com juros" },
+                    { value: "10x com juros", label: "10x com juros" },
+                    { value: "11x com juros", label: "11x com juros" },
+                    { value: "12x com juros", label: "12x com juros" },
+                  ]}
+                  error={errors.parcelamento?.message}
+                />
+              )}
+              
+              {!mostraParcelamento && (
+                <FormInput
+                  id="localizacao"
+                  label="Localização"
+                  value={watch("localizacao") || ""}
+                  onChange={handleInputChange("localizacao")}
+                  placeholder="Digite a localização de entrega"
+                  error={errors.localizacao?.message}
+                />
+              )}
             </div>
+            
+            {mostraParcelamento && (
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                <FormInput
+                  id="localizacao"
+                  label="Localização"
+                  value={watch("localizacao") || ""}
+                  onChange={handleInputChange("localizacao")}
+                  placeholder="Digite a localização de entrega"
+                  error={errors.localizacao?.message}
+                />
+              </div>
+            )}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <FormSelect
+                  id="cupom"
+                  label="Cupom de Desconto"
+                  value={watch("cupom") || ""}
+                  onChange={handleSelectChange("cupom")}
+                  options={[
+                    { value: "", label: "Nenhum" },
+                    { value: "5% OFF", label: "5% de desconto" },
+                    { value: "10% OFF", label: "10% de desconto" },
+                    { value: "15% OFF", label: "15% de desconto" },
+                    { value: "Personalizado", label: "Desconto personalizado" },
+                  ]}
+                  error={errors.cupom?.message}
+                />
+                
+                {cupom === "Personalizado" && (
+                  <div className="mt-2">
+                    <FormInput
+                      id="custom-cupom"
+                      label=""
+                      value={customCupom}
+                      onChange={handleCustomCupomChange}
+                      placeholder="Ex: 20% OFF"
+                      error=""
+                    />
+                  </div>
+                )}
+              </div>
+              
               <FormCombobox
                 id="frete"
                 label="Frete"
@@ -394,18 +525,8 @@ const CustomerForm = () => {
                 error={errors.frete?.message}
                 required
               />
-              <FormInput
-                id="valorTotal"
-                label="Valor Total"
-                value={watch("valorTotal")}
-                onChange={handleInputChange("valorTotal")}
-                placeholder="R$ 0,00"
-                error={errors.valorTotal?.message}
-                className="font-semibold"
-                required
-                readOnly={true}
-              />
             </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormDatePicker
                 id="dataPagamento"
@@ -424,6 +545,20 @@ const CustomerForm = () => {
                 error={errors.dataEntrega?.message}
                 required
                 placeholder="Selecione a data de entrega"
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4">
+              <FormInput
+                id="valorTotal"
+                label="Valor Total"
+                value={watch("valorTotal")}
+                onChange={handleInputChange("valorTotal")}
+                placeholder="R$ 0,00"
+                error={errors.valorTotal?.message}
+                className="font-semibold text-lg"
+                required
+                readOnly={true}
               />
             </div>
           </div>

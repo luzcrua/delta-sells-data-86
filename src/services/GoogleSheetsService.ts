@@ -1,9 +1,20 @@
+
 // This file provides helpers for Google Sheets integration
-import { GOOGLE_SHEETS_URL, USE_FORM_FALLBACK, MAX_RETRIES, RETRY_DELAY, SHEET_NAMES, DEBUG_MODE, SHEET_COLUMNS } from "../env";
+import { 
+  GOOGLE_SHEETS_URL, 
+  USE_FORM_FALLBACK, 
+  MAX_RETRIES, 
+  RETRY_DELAY, 
+  SHEET_NAMES, 
+  DEBUG_MODE, 
+  SHEET_COLUMNS,
+  GOOGLE_SHEET_VIEW_URL,
+  WHATSAPP_FALLBACK_NUMBER
+} from "../env";
 import { LogService } from "@/services/LogService";
 
 // INSTRUÇÕES PARA CONFIGURAR O GOOGLE SHEETS:
-// 1. Abra sua planilha do Google: https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit
+// 1. Abra sua planilha do Google: https://docs.google.com/spreadsheets/d/13DHwYtX13t6CJ3Fg5mMmPpNHT8rZt7Cio3JwB04ipHY/edit?gid=0#gid=0
 // 2. Vá para Extensões > Apps Script
 // 3. Substitua o código pelo script fornecido pelo usuário
 // 4. Salve o script e implemente-o como um aplicativo da Web:
@@ -13,14 +24,6 @@ import { LogService } from "@/services/LogService";
 //    d. Configure "Quem tem acesso:" para "Qualquer pessoa, mesmo anônimos"
 //    e. Clique em "Implantar" e autorize o aplicativo
 //    f. Copie a URL do aplicativo da Web e configure no arquivo env.ts
-
-// Número do WhatsApp para fallback (com código do país)
-const WHATSAPP_FALLBACK_NUMBER = "558293460460";
-
-// URLs das abas específicas da planilha do Google Sheets para visualização
-const GOOGLE_SHEET_VIEW_URL = "https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit";
-const GOOGLE_SHEET_LEADS_TAB_URL = "https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit?gid=2074506371#gid=2074506371";
-const GOOGLE_SHEET_CUSTOMERS_TAB_URL = "https://docs.google.com/spreadsheets/d/1nys3YrD1-0tshVfcFSs_3ColOKifB4GQL92s5xD3vxE/edit?gid=1972156622#gid=1972156622";
 
 /**
  * Formata os dados para envio via WhatsApp
@@ -60,6 +63,14 @@ function formatDataForWhatsApp(data: any): string {
     message += `📏 *Tamanho:* ${data.tamanho}\n`;
     message += `💰 *Valor:* ${data.valor}\n`;
     message += `💳 *Forma Pagamento:* ${data.formaPagamento}\n`;
+    
+    if (data.parcelamento) {
+      message += `🔄 *Parcelamento:* ${data.parcelamento}\n`;
+    }
+    
+    if (data.cupom) {
+      message += `🏷️ *Cupom:* ${data.cupom}\n`;
+    }
     
     if (data.localizacao) {
       message += `📍 *Localização:* ${data.localizacao}\n`;
@@ -107,8 +118,20 @@ function validateData(data: any): boolean {
   
   // Verificar se todos os campos necessários estão presentes
   const missingFields = expectedColumns.filter(column => 
-    data[column] === undefined || data[column] === null
-  );
+    data[column] === undefined || data[column] === null || data[column] === ""
+  ).filter(field => {
+    // Filtrar campos opcionais que podem estar vazios
+    if (data.formType === 'cliente') {
+      if (['cpf', 'parcelamento', 'cupom', 'localizacao', 'observacao'].includes(field)) {
+        return false;
+      }
+    } else if (data.formType === 'lead') {
+      if (['instagram', 'observacoes'].includes(field)) {
+        return false;
+      }
+    }
+    return true;
+  });
   
   if (missingFields.length > 0) {
     LogService.warn(`Dados incompletos: faltando campos [${missingFields.join(', ')}]`, data);
@@ -123,7 +146,7 @@ function validateData(data: any): boolean {
  * Isso contorna problemas de CORS para métodos POST
  */
 function sendWithForm(url: string, data: any): Promise<any> {
-  LogService.info("Tentando envio com técnica de formulário", { url });
+  LogService.info("Tentando envio com técnica de formulário", { url, formType: data.formType });
   
   return new Promise((resolve, reject) => {
     // Verificar dados antes de enviar
@@ -327,47 +350,37 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
   }
   
   try {
-    // Obter a URL do Apps Script do env.ts
-    const webhookUrl = GOOGLE_SHEETS_URL;
+    // Obter a URL do Apps Script do env.ts baseado no tipo de formulário
+    const formType = data.formType === 'lead' ? 'LEAD' : 'CLIENTE';
+    const webhookUrl = GOOGLE_SHEETS_URL[formType];
     
     if (!webhookUrl || typeof webhookUrl !== 'string') {
-      LogService.error("URL do Apps Script não configurada em env.ts", {});
+      LogService.error(`URL do Apps Script para ${formType} não configurada em env.ts`, {});
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
-        message: "A URL do Apps Script não está configurada no arquivo env.ts. Configure o arquivo adicionando a URL ou use o WhatsApp como alternativa." 
+        message: `A URL do Apps Script para ${formType} não está configurada no arquivo env.ts. Configure o arquivo adicionando a URL ou use o WhatsApp como alternativa.` 
       };
     }
     
     // Verifica se a URL parece válida
     if (!webhookUrl.startsWith('https://') || !webhookUrl.includes('script.google.com')) {
-      LogService.error("URL do Apps Script inválida", {});
+      LogService.error(`URL do Apps Script para ${formType} inválida`, {});
       sendToWhatsAppFallback(data);
       return { 
         success: false, 
-        message: "A URL do Apps Script no arquivo env.ts parece inválida. Configure corretamente ou use o WhatsApp como alternativa." 
+        message: `A URL do Apps Script para ${formType} no arquivo env.ts parece inválida. Configure corretamente ou use o WhatsApp como alternativa.` 
       };
     }
     
     // Garantir que estamos usando os nomes de planilha corretos
-    if (data.formType === 'lead') {
-      LogService.info("Preparando dados para a planilha de leads", { sheetName: SHEET_NAMES.LEAD });
-      data.sheetName = SHEET_NAMES.LEAD; // Adicionar nome da planilha aos dados
-      
-      // Verificar se os dados estão completos antes de enviar
-      const hasAllFields = validateData(data);
-      if (!hasAllFields) {
-        LogService.warn("Dados de lead incompletos para envio", data);
-      }
-    } else {
-      LogService.info("Preparando dados para a planilha de clientes", { sheetName: SHEET_NAMES.CLIENTE });
-      data.sheetName = SHEET_NAMES.CLIENTE; // Adicionar nome da planilha aos dados
-      
-      // Verificar se os dados estão completos antes de enviar
-      const hasAllFields = validateData(data);
-      if (!hasAllFields) {
-        LogService.warn("Dados de cliente incompletos para envio", data);
-      }
+    LogService.info(`Preparando dados para a planilha de ${formType}`, { sheetName: SHEET_NAMES[formType] });
+    data.sheetName = SHEET_NAMES[formType]; // Adicionar nome da planilha aos dados
+    
+    // Verificar se os dados estão completos antes de enviar
+    const hasAllFields = validateData(data);
+    if (!hasAllFields) {
+      LogService.warn(`Dados de ${formType.toLowerCase()} incompletos para envio`, data);
     }
     
     LogService.info(`Tentando enviar dados para Google Sheets: ${webhookUrl}`, {});
@@ -445,8 +458,17 @@ export async function submitToGoogleSheets(data: any): Promise<{ success: boolea
  * Verifica se a URL do webhook está configurada
  */
 export function isWebhookConfigured(): boolean {
-  const url = GOOGLE_SHEETS_URL;
-  return typeof url === 'string' && url !== "" && url.includes('script.google.com');
+  const clienteUrl = GOOGLE_SHEETS_URL.CLIENTE;
+  const leadUrl = GOOGLE_SHEETS_URL.LEAD;
+  
+  return (
+    typeof clienteUrl === 'string' && 
+    clienteUrl !== "" && 
+    clienteUrl.includes('script.google.com') &&
+    typeof leadUrl === 'string' && 
+    leadUrl !== "" && 
+    leadUrl.includes('script.google.com')
+  );
 }
 
 /**
@@ -454,9 +476,9 @@ export function isWebhookConfigured(): boolean {
  */
 export function getGoogleSheetViewUrl(formType?: 'cliente' | 'lead'): string {
   if (formType === 'lead') {
-    return GOOGLE_SHEET_LEADS_TAB_URL;
+    return GOOGLE_SHEET_VIEW_URL.LEAD;
   } else if (formType === 'cliente') {
-    return GOOGLE_SHEET_CUSTOMERS_TAB_URL;
+    return GOOGLE_SHEET_VIEW_URL.CLIENTE;
   }
-  return GOOGLE_SHEET_VIEW_URL; // URL padrão se nenhum tipo for especificado
+  return GOOGLE_SHEET_VIEW_URL.CLIENTE; // URL padrão se nenhum tipo for especificado
 }

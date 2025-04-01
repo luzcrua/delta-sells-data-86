@@ -13,6 +13,8 @@ export const formSchema = z.object({
   tamanho: z.string().min(1, "Tamanho é obrigatório"),
   valor: z.string().min(1, "Valor é obrigatório"),
   formaPagamento: z.enum(["PIX", "Débito", "Crédito", "Dinheiro"]),
+  parcelamento: z.string().optional(),
+  cupom: z.string().optional(),
   localizacao: z.string().optional(),
   frete: z.string().min(1, "Frete é obrigatório"),
   dataPagamento: z.date({
