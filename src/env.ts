@@ -10,7 +10,7 @@ export const GOOGLE_SHEETS_URL = {
 // Novas URLs para visualização direta das planilhas
 export const GOOGLE_SHEET_VIEW_URL = {
   CLIENTE: "https://docs.google.com/spreadsheets/d/13DHwYtX13t6CJ3Fg5mMmPpNHT8rZt7Cio3JwB04ipHY/edit?gid=0#gid=0",
-  LEAD: "https://docs.google.com/spreadsheets/d/13DHwYtX13t6CJ3Fg5mMmPpNHT8rZt7Cio3JwB04ipHY/edit?gid=0#gid=0"
+  LEAD: "https://docs.google.com/spreadsheets/d/1NA-iPBQkAZ-ZG7IST9tUkTCZPHQkuHT1aazRdmcXu14/edit?usp=sharing"
 };
 
 // Configuração de log
