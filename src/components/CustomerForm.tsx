@@ -34,7 +34,6 @@ const CustomerForm = () => {
   const [showSheetLink, setShowSheetLink] = useState(false);
   
   useEffect(() => {
-    // Verificar se a URL do webhook está configurada
     const configured = isWebhookConfigured();
     setIsConfigured(configured);
     LogService.info(`CustomerForm - Webhook configurado: ${configured}`);
@@ -77,73 +76,74 @@ const CustomerForm = () => {
   const frete = watch("frete");
   const parcelamento = watch("parcelamento");
   
-  // Atualiza o mostrar parcelamento quando a forma de pagamento mudar
   useEffect(() => {
     setMostraParcelamento(formaPagamento === "Crédito");
-    // Se não for crédito, limpar o valor do parcelamento
     if (formaPagamento !== "Crédito") {
       setValue("parcelamento", "");
     }
   }, [formaPagamento, setValue]);
   
-  // Calcula o valor total com base no valor, frete, cupom de desconto e parcelamento
   useEffect(() => {
-    // Parseia o valor e o frete
-    const parsedValor = parseFloat(valor.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
-    const parsedFrete = parseFloat(frete.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
-    
-    setValorNumerico(parsedValor);
-    setFreteNumerico(parsedFrete);
-    
-    // Aplica o desconto se houver cupom
-    let descontoPercentual = 0;
-    
-    if (cupom === "5% OFF") {
-      descontoPercentual = 5;
-    } else if (cupom === "10% OFF") {
-      descontoPercentual = 10;
-    } else if (cupom === "15% OFF") {
-      descontoPercentual = 15;
-    } else if (cupom === "Personalizado" && customCupom) {
-      // Tenta extrair o percentual do campo personalizado
-      const percentMatch = customCupom.match(/(\d+)/);
-      if (percentMatch) {
-        descontoPercentual = parseInt(percentMatch[0]);
-      }
-    }
-    
-    // Calcula o valor com desconto
-    const desconto = parsedValor * (descontoPercentual / 100);
-    const valorComDesconto = parsedValor - desconto;
-    
-    // Aplica juros de parcelamento se necessário
-    let valorFinal = valorComDesconto;
-    if (formaPagamento === "Crédito" && parcelamento) {
-      const numParcelas = parseInt(parcelamento.split("x")[0]);
-      const temJuros = parcelamento.includes("com juros");
+    try {
+      const cleanValor = valor.replace(/[^\d,]/g, "").replace(",", ".");
+      const cleanFrete = frete.replace(/[^\d,]/g, "").replace(",", ".");
       
-      if (temJuros && numParcelas > 3) {
-        // Aplica 3% de juros por parcela acima de 3x
-        const taxaJuros = 0.03 * (numParcelas - 3);
-        valorFinal = valorComDesconto * (1 + taxaJuros);
+      const parsedValor = cleanValor ? parseFloat(cleanValor) : 0;
+      const parsedFrete = cleanFrete ? parseFloat(cleanFrete) : 0;
+      
+      setValorNumerico(parsedValor);
+      setFreteNumerico(parsedFrete);
+      
+      let descontoPercentual = 0;
+      
+      if (cupom === "5% OFF") {
+        descontoPercentual = 5;
+      } else if (cupom === "10% OFF") {
+        descontoPercentual = 10;
+      } else if (cupom === "15% OFF") {
+        descontoPercentual = 15;
+      } else if (cupom === "Personalizado" && customCupom) {
+        const percentMatch = customCupom.match(/(\d+)/);
+        if (percentMatch) {
+          descontoPercentual = parseInt(percentMatch[0]);
+        }
       }
+      
+      const desconto = (parsedValor * descontoPercentual) / 100;
+      const valorComDesconto = parsedValor - desconto;
+      
+      let valorFinal = valorComDesconto;
+      if (formaPagamento === "Crédito" && parcelamento) {
+        const numParcelas = parseInt(parcelamento.split("x")[0]);
+        const temJuros = parcelamento.includes("com juros");
+        
+        if (temJuros && numParcelas > 3) {
+          const taxaJuros = 0.03 * (numParcelas - 3);
+          valorFinal = valorComDesconto * (1 + taxaJuros);
+        }
+      }
+      
+      const total = valorFinal + parsedFrete;
+      
+      const totalEmCentavos = Math.round(total * 100);
+      setValue("valorTotal", formatCurrency(String(totalEmCentavos)));
+      
+      LogService.debug("Valores atualizados", { 
+        parsedValor, 
+        parsedFrete, 
+        descontoPercentual, 
+        desconto,
+        valorComDesconto,
+        formaPagamento,
+        parcelamento,
+        valorFinal,
+        total,
+        totalEmCentavos
+      });
+    } catch (error) {
+      LogService.error("Erro ao calcular valor total", error);
+      setValue("valorTotal", formatCurrency(String(parseFloat(frete.replace(/[^\d,]/g, "").replace(",", ".")) * 100 || 1500)));
     }
-    
-    // Calcula o total (valor final + frete)
-    const total = valorFinal + parsedFrete;
-    
-    setValue("valorTotal", formatCurrency(String(total * 100)));
-    
-    LogService.debug("Valores atualizados", { 
-      parsedValor, 
-      parsedFrete, 
-      descontoPercentual, 
-      valorComDesconto,
-      formaPagamento,
-      parcelamento,
-      valorFinal,
-      total 
-    });
   }, [valor, frete, cupom, customCupom, formaPagamento, parcelamento, setValue]);
 
   const handleInputChange = (field: keyof FormValues) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -153,7 +153,6 @@ const CustomerForm = () => {
   const handleSelectChange = (field: keyof FormValues) => (value: string) => {
     setValue(field, value);
     
-    // Se o campo for cupom e o valor for "Personalizado", limpar o valor personalizado
     if (field === "cupom" && value !== "Personalizado") {
       setCustomCupom("");
     }
@@ -162,7 +161,6 @@ const CustomerForm = () => {
   const handleCustomCupomChange = (e: ChangeEvent<HTMLInputElement>) => {
     setCustomCupom(e.target.value);
     
-    // Atualizar o valor do cupom no formulário
     if (e.target.value) {
       setValue("cupom", "Personalizado");
     } else {
@@ -205,12 +203,11 @@ const CustomerForm = () => {
         cupom: data.cupom === "Personalizado" ? customCupom : data.cupom,
         dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
         dataEntrega: data.dataEntrega ? format(data.dataEntrega, "dd/MM/yy") : "",
-        formType: 'cliente', // Identificador para saber que é um formulário de cliente
+        formType: 'cliente',
       };
       
       LogService.debug("Formulário de Cliente - Dados formatados para envio", formattedData);
       
-      // Tentativas múltiplas para garantir que os dados sejam enviados
       let attempt = 1;
       let result;
       
@@ -222,9 +219,8 @@ const CustomerForm = () => {
           LogService.info(`Formulário de Cliente - Resposta da tentativa ${attempt}`, result);
           
           if (result.success) {
-            break; // Sucesso, sai do loop
+            break;
           } else {
-            // Se não teve sucesso, mas não é um erro de rede, sai do loop
             if (!result.message.includes("network") && !result.message.includes("CORS")) {
               break;
             }
@@ -233,7 +229,6 @@ const CustomerForm = () => {
           LogService.error(`Formulário de Cliente - Erro na tentativa ${attempt}`, innerError);
         }
         
-        // Incrementa tentativa e aguarda antes de tentar novamente
         attempt++;
         if (attempt <= 3) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -249,14 +244,11 @@ const CustomerForm = () => {
         setSubmitted(true);
         setShowSheetLink(true);
         
-        // Só limpar o formulário após envio bem-sucedido
         setTimeout(() => {
           reset();
           setSubmitted(false);
-          // Não esconder o link da planilha, apenas resetar o formulário
         }, 3000);
       } else {
-        // Armazenar a mensagem de erro, mas não resetar o formulário
         const errorMsg = result?.message || "Erro desconhecido ao enviar dados.";
         LogService.warn("Formulário de Cliente - Falha no envio", { errorMsg });
         setSubmitError(errorMsg);
