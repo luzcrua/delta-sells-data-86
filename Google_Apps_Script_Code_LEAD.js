@@ -1,8 +1,8 @@
 
 /**
- * Script para receber dados da aplicação web e salvar na planilha Lead.
+ * Script para receber dados da aplicação web e salvar na planilha de Leads.
  * 
- * Este script deve ser implementado no Apps Script da planilha Lead
+ * Este script deve ser implementado no Apps Script da planilha de Leads
  * e depois publicado como aplicativo da web para receber dados de formulários.
  */
 

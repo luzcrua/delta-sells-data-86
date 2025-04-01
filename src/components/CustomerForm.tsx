@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,7 +30,7 @@ const CustomerForm = () => {
   const [valorNumerico, setValorNumerico] = useState(0);
   const [freteNumerico, setFreteNumerico] = useState(15);
   const [customCupom, setCustomCupom] = useState("");
-  const [mostraParcelamento, setMostraParcelamento] = useState(false);
+  const [jurosPersonalizado, setJurosPersonalizado] = useState("");
   const [isConfigured, setIsConfigured] = useState(false);
   const [showSheetLink, setShowSheetLink] = useState(false);
   
@@ -60,6 +61,7 @@ const CustomerForm = () => {
       valor: "",
       formaPagamento: "PIX",
       parcelamento: "",
+      jurosAplicado: "",
       cupom: "",
       localizacao: "",
       frete: "15,00",
@@ -75,13 +77,7 @@ const CustomerForm = () => {
   const valor = watch("valor");
   const frete = watch("frete");
   const parcelamento = watch("parcelamento");
-  
-  useEffect(() => {
-    setMostraParcelamento(formaPagamento === "Crédito");
-    if (formaPagamento !== "Crédito") {
-      setValue("parcelamento", "");
-    }
-  }, [formaPagamento, setValue]);
+  const jurosAplicado = watch("jurosAplicado");
   
   useEffect(() => {
     try {
@@ -113,19 +109,35 @@ const CustomerForm = () => {
       const valorComDesconto = parsedValor - desconto;
       
       let valorFinal = valorComDesconto;
-      if (formaPagamento === "Crédito" && parcelamento) {
+      
+      // Aplicar juros se houver parcelamento com juros
+      if (parcelamento) {
         const numParcelas = parseInt(parcelamento.split("x")[0]);
-        const temJuros = parcelamento.includes("com juros");
         
-        if (temJuros && numParcelas > 3) {
-          const taxaJuros = 0.03 * (numParcelas - 3);
-          valorFinal = valorComDesconto * (1 + taxaJuros);
+        // Verificar se tem juros personalizado
+        if (jurosAplicado === "Personalizado" && jurosPersonalizado) {
+          const taxaMatch = jurosPersonalizado.match(/(\d+)/);
+          if (taxaMatch) {
+            const taxaJuros = parseInt(taxaMatch[0]) / 100;
+            valorFinal = valorComDesconto * (1 + taxaJuros);
+          }
+        }
+        // Aplicar juros padrão para parcelamento com juros
+        else if (parcelamento.includes("com juros")) {
+          // Juros de 3% por parcela acima de 3x
+          if (numParcelas > 3) {
+            const taxaJuros = 0.03 * (numParcelas - 3);
+            valorFinal = valorComDesconto * (1 + taxaJuros);
+          }
         }
       }
       
       const total = valorFinal + parsedFrete;
       
-      const totalEmCentavos = Math.round(total * 100);
+      // Arredondar para duas casas decimais
+      const totalArredondado = Math.round(total * 100) / 100;
+      const totalEmCentavos = Math.round(totalArredondado * 100);
+      
       setValue("valorTotal", formatCurrency(String(totalEmCentavos)));
       
       LogService.debug("Valores atualizados", { 
@@ -136,15 +148,18 @@ const CustomerForm = () => {
         valorComDesconto,
         formaPagamento,
         parcelamento,
+        jurosAplicado,
+        jurosPersonalizado,
         valorFinal,
         total,
+        totalArredondado,
         totalEmCentavos
       });
     } catch (error) {
       LogService.error("Erro ao calcular valor total", error);
       setValue("valorTotal", formatCurrency(String(parseFloat(frete.replace(/[^\d,]/g, "").replace(",", ".")) * 100 || 1500)));
     }
-  }, [valor, frete, cupom, customCupom, formaPagamento, parcelamento, setValue]);
+  }, [valor, frete, cupom, customCupom, formaPagamento, parcelamento, jurosAplicado, jurosPersonalizado, setValue]);
 
   const handleInputChange = (field: keyof FormValues) => (e: ChangeEvent<HTMLInputElement>) => {
     setValue(field, e.target.value);
@@ -156,6 +171,10 @@ const CustomerForm = () => {
     if (field === "cupom" && value !== "Personalizado") {
       setCustomCupom("");
     }
+    
+    if (field === "jurosAplicado" && value !== "Personalizado") {
+      setJurosPersonalizado("");
+    }
   };
 
   const handleCustomCupomChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -165,6 +184,16 @@ const CustomerForm = () => {
       setValue("cupom", "Personalizado");
     } else {
       setValue("cupom", "");
+    }
+  };
+  
+  const handleJurosPersonalizadoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setJurosPersonalizado(e.target.value);
+    
+    if (e.target.value) {
+      setValue("jurosAplicado", "Personalizado");
+    } else {
+      setValue("jurosAplicado", "");
     }
   };
 
@@ -201,6 +230,7 @@ const CustomerForm = () => {
       const formattedData = {
         ...data,
         cupom: data.cupom === "Personalizado" ? customCupom : data.cupom,
+        jurosAplicado: data.jurosAplicado === "Personalizado" ? jurosPersonalizado : data.jurosAplicado,
         dataPagamento: data.dataPagamento ? format(data.dataPagamento, "dd/MM/yy") : "",
         dataEntrega: data.dataEntrega ? format(data.dataEntrega, "dd/MM/yy") : "",
         formType: 'cliente',
@@ -443,55 +473,71 @@ const CustomerForm = () => {
                 required
               />
               
-              {mostraParcelamento && (
-                <FormSelect
-                  id="parcelamento"
-                  label="Parcelamento"
-                  value={watch("parcelamento") || ""}
-                  onChange={handleSelectChange("parcelamento")}
-                  options={[
-                    { value: "", label: "Selecione" },
-                    { value: "1x sem juros", label: "1x sem juros" },
-                    { value: "2x sem juros", label: "2x sem juros" },
-                    { value: "3x sem juros", label: "3x sem juros" },
-                    { value: "4x com juros", label: "4x com juros" },
-                    { value: "5x com juros", label: "5x com juros" },
-                    { value: "6x com juros", label: "6x com juros" },
-                    { value: "7x com juros", label: "7x com juros" },
-                    { value: "8x com juros", label: "8x com juros" },
-                    { value: "9x com juros", label: "9x com juros" },
-                    { value: "10x com juros", label: "10x com juros" },
-                    { value: "11x com juros", label: "11x com juros" },
-                    { value: "12x com juros", label: "12x com juros" },
-                  ]}
-                  error={errors.parcelamento?.message}
-                />
-              )}
-              
-              {!mostraParcelamento && (
-                <FormInput
-                  id="localizacao"
-                  label="Localização"
-                  value={watch("localizacao") || ""}
-                  onChange={handleInputChange("localizacao")}
-                  placeholder="Digite a localização de entrega"
-                  error={errors.localizacao?.message}
-                />
-              )}
+              <FormSelect
+                id="parcelamento"
+                label="Parcelamento"
+                value={watch("parcelamento") || ""}
+                onChange={handleSelectChange("parcelamento")}
+                options={[
+                  { value: "", label: "À vista" },
+                  { value: "2x sem juros", label: "2x sem juros" },
+                  { value: "3x sem juros", label: "3x sem juros" },
+                  { value: "4x com juros", label: "4x com juros" },
+                  { value: "5x com juros", label: "5x com juros" },
+                  { value: "6x com juros", label: "6x com juros" },
+                  { value: "7x com juros", label: "7x com juros" },
+                  { value: "8x com juros", label: "8x com juros" },
+                  { value: "9x com juros", label: "9x com juros" },
+                  { value: "10x com juros", label: "10x com juros" },
+                  { value: "11x com juros", label: "11x com juros" },
+                  { value: "12x com juros", label: "12x com juros" },
+                ]}
+                error={errors.parcelamento?.message}
+              />
             </div>
             
-            {mostraParcelamento && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                <FormInput
-                  id="localizacao"
-                  label="Localização"
-                  value={watch("localizacao") || ""}
-                  onChange={handleInputChange("localizacao")}
-                  placeholder="Digite a localização de entrega"
-                  error={errors.localizacao?.message}
+            {parcelamento && parcelamento.includes("com juros") && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormSelect
+                  id="jurosAplicado"
+                  label="Juros Aplicado"
+                  value={watch("jurosAplicado") || ""}
+                  onChange={handleSelectChange("jurosAplicado")}
+                  options={[
+                    { value: "", label: "Padrão (3% por parcela acima de 3x)" },
+                    { value: "5%", label: "5% de juros" },
+                    { value: "10%", label: "10% de juros" },
+                    { value: "15%", label: "15% de juros" },
+                    { value: "Personalizado", label: "Juros personalizado" },
+                  ]}
+                  error={errors.jurosAplicado?.message}
                 />
+                
+                {jurosAplicado === "Personalizado" && (
+                  <div className="mt-2">
+                    <FormInput
+                      id="juros-personalizado"
+                      label=""
+                      value={jurosPersonalizado}
+                      onChange={handleJurosPersonalizadoChange}
+                      placeholder="Ex: 7%"
+                      error=""
+                    />
+                  </div>
+                )}
               </div>
             )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <FormInput
+                id="localizacao"
+                label="Localização"
+                value={watch("localizacao") || ""}
+                onChange={handleInputChange("localizacao")}
+                placeholder="Digite a localização de entrega"
+                error={errors.localizacao?.message}
+              />
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -572,10 +618,14 @@ const CustomerForm = () => {
                 required
                 readOnly={true}
               />
-              {formaPagamento === "Crédito" && parcelamento && (
+              {parcelamento && (
                 <div className="text-sm text-delta-600">
                   {parcelamento.includes("com juros") 
-                    ? `Valor será parcelado em ${parcelamento} (3% de juros por parcela acima de 3x)` 
+                    ? jurosAplicado === "Personalizado"
+                      ? `Valor será parcelado em ${parcelamento} (${jurosPersonalizado} de juros)`
+                      : jurosAplicado
+                        ? `Valor será parcelado em ${parcelamento} (${jurosAplicado} de juros)`
+                        : `Valor será parcelado em ${parcelamento} (3% de juros por parcela acima de 3x)`
                     : `Valor será parcelado em ${parcelamento}`}
                 </div>
               )}

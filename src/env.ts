@@ -34,7 +34,7 @@ export const DEBUG_MODE: boolean = true;
 // Nome das colunas esperadas na planilha (usado para debug)
 export const SHEET_COLUMNS = {
   CLIENTE: ["nome", "cpf", "telefone", "genero", "linha", "tipo", "cor", "tamanho", 
-    "valor", "formaPagamento", "parcelamento", "cupom", "localizacao", "frete", "dataPagamento", "dataEntrega", 
+    "valor", "formaPagamento", "parcelamento", "jurosAplicado", "cupom", "localizacao", "frete", "dataPagamento", "dataEntrega", 
     "valorTotal", "observacao"],
   LEAD: ["nome", "telefone", "instagram", "interesse", "statusLead", "dataLembrete", 
     "motivoLembrete", "observacoes"]
