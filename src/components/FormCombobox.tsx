@@ -41,6 +41,9 @@ const FormCombobox = ({
   const [focused, setFocused] = useState(false);
   const [useCustom, setUseCustom] = useState(false);
 
+  // Filter out any options with empty string values
+  const validOptions = options.filter(option => option.value !== "");
+
   const handleSelectChange = (newValue: string) => {
     if (newValue === "custom") {
       setUseCustom(true);
@@ -83,7 +86,7 @@ const FormCombobox = ({
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>
           <SelectContent>
-            {options.map((option) => (
+            {validOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>

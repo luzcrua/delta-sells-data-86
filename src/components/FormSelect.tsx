@@ -35,6 +35,9 @@ const FormSelect = ({
 }: FormSelectProps) => {
   const [focused, setFocused] = useState(false);
 
+  // Filter out any options with empty string values
+  const validOptions = options.filter(option => option.value !== "");
+
   return (
     <div className={cn("space-y-2", className)}>
       <Label 
@@ -61,7 +64,7 @@ const FormSelect = ({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {options.map((option) => (
+          {validOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>
