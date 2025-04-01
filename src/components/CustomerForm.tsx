@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -76,13 +75,18 @@ const CustomerForm = () => {
   const cupom = watch("cupom");
   const valor = watch("valor");
   const frete = watch("frete");
+  const parcelamento = watch("parcelamento");
   
   // Atualiza o mostrar parcelamento quando a forma de pagamento mudar
   useEffect(() => {
     setMostraParcelamento(formaPagamento === "Crédito");
-  }, [formaPagamento]);
+    // Se não for crédito, limpar o valor do parcelamento
+    if (formaPagamento !== "Crédito") {
+      setValue("parcelamento", "");
+    }
+  }, [formaPagamento, setValue]);
   
-  // Calcula o valor total com base no valor, frete e cupom de desconto
+  // Calcula o valor total com base no valor, frete, cupom de desconto e parcelamento
   useEffect(() => {
     // Parseia o valor e o frete
     const parsedValor = parseFloat(valor.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
@@ -112,8 +116,21 @@ const CustomerForm = () => {
     const desconto = parsedValor * (descontoPercentual / 100);
     const valorComDesconto = parsedValor - desconto;
     
-    // Calcula o total (valor com desconto + frete)
-    const total = valorComDesconto + parsedFrete;
+    // Aplica juros de parcelamento se necessário
+    let valorFinal = valorComDesconto;
+    if (formaPagamento === "Crédito" && parcelamento) {
+      const numParcelas = parseInt(parcelamento.split("x")[0]);
+      const temJuros = parcelamento.includes("com juros");
+      
+      if (temJuros && numParcelas > 3) {
+        // Aplica 3% de juros por parcela acima de 3x
+        const taxaJuros = 0.03 * (numParcelas - 3);
+        valorFinal = valorComDesconto * (1 + taxaJuros);
+      }
+    }
+    
+    // Calcula o total (valor final + frete)
+    const total = valorFinal + parsedFrete;
     
     setValue("valorTotal", formatCurrency(String(total * 100)));
     
@@ -121,10 +138,13 @@ const CustomerForm = () => {
       parsedValor, 
       parsedFrete, 
       descontoPercentual, 
-      valorComDesconto, 
+      valorComDesconto,
+      formaPagamento,
+      parcelamento,
+      valorFinal,
       total 
     });
-  }, [valor, frete, cupom, customCupom, setValue]);
+  }, [valor, frete, cupom, customCupom, formaPagamento, parcelamento, setValue]);
 
   const handleInputChange = (field: keyof FormValues) => (e: ChangeEvent<HTMLInputElement>) => {
     setValue(field, e.target.value);
@@ -560,6 +580,13 @@ const CustomerForm = () => {
                 required
                 readOnly={true}
               />
+              {formaPagamento === "Crédito" && parcelamento && (
+                <div className="text-sm text-delta-600">
+                  {parcelamento.includes("com juros") 
+                    ? `Valor será parcelado em ${parcelamento} (3% de juros por parcela acima de 3x)` 
+                    : `Valor será parcelado em ${parcelamento}`}
+                </div>
+              )}
             </div>
           </div>
 
